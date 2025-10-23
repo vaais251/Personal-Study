@@ -882,6 +882,9 @@
             focusDuration = newFocus;
             breakDuration = newBreak;
             sessionsPerCycle = newSessions;
+            
+            saveStateToLocal(); // <-- ADDED: Save settings when "Save" is clicked
+
             reset();
             toggleSettings();
             playSound(800, 0.2);
@@ -984,6 +987,11 @@
                 localStorage.setItem(`pomodoro-log-${todayStr}`, JSON.stringify(dailyLog));
                 // Save the current pending tasks to a separate key so we can load it next time
                 localStorage.setItem('pomodoro-pending-tasks', JSON.stringify(tasks));
+
+                // NEW: Save timer settings
+                const settings = { focusDuration, breakDuration, sessionsPerCycle };
+                localStorage.setItem('pomodoro-settings', JSON.stringify(settings));
+
             } catch (e) {
                 console.error("Failed to save to localStorage: ", e);
             }
@@ -991,6 +999,19 @@
 
         function loadStateFromLocal() {
             try {
+                // NEW: Load settings
+                const settings = JSON.parse(localStorage.getItem('pomodoro-settings') || '{}');
+                if (settings.focusDuration) {
+                    focusDuration = settings.focusDuration;
+                    breakDuration = settings.breakDuration;
+                    sessionsPerCycle = settings.sessionsPerCycle;
+
+                    // NEW: Update the input fields to show the loaded settings
+                    document.getElementById('focusTime').value = focusDuration;
+                    document.getElementById('breakTime').value = breakDuration;
+                    document.getElementById('sessionsPerCycle').value = sessionsPerCycle;
+                }
+
                 const todayStr = getTodayDateString();
                 const pendingTasks = JSON.parse(localStorage.getItem('pomodoro-pending-tasks') || '[]');
                 const todaysLog = JSON.parse(localStorage.getItem(`pomodoro-log-${todayStr}`) || '{}');
@@ -1217,18 +1238,15 @@
 
         // --- Initialize App ---
         function init() {
-            updateDisplay();
-            updateModeDisplay();
-            updateSessionDisplay();
-            loadStateFromLocal(); // This will load data AND render tasks/stats
+            // UPDATED: Load state first to get settings
+            loadStateFromLocal(); // This will load settings, data AND render tasks/stats
+            
+            // UPDATED: Reset *after* loading to apply the loaded settings to the timer
+            reset(); 
         }
 
         init();
     </script>
 </body>
 </html>
-
-
-
-
 
