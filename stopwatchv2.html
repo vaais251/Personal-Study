@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Study Timer</title>
+    <!-- NEW: Added a dynamic SVG favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><circle cx=%2750%27 cy=%2750%27 r=%2745%27 fill=%27%23f5576c%27/><circle cx=%2750%27 cy=%2750%27 r=%2730%27 fill=%27white%27/><circle cx=%2750%27 cy=%2750%27 r=%2715%27 fill=%27%23f5576c%27/></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto; /* Allow scrolling for more content */
+            padding: 20px 0;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 550px;
+            width: 90%;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .session-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .mode-indicator {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-badge {
+            display: inline-block;
+            padding: 10px 30px;
+            border-radius: 20px;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        .mode-badge.focus {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .mode-badge.break {
+            background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+
+        .display {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .progress-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .progress-ring circle {
+            stroke: white;
+            stroke-width: 8;
+            fill: transparent;
+            stroke-dasharray: 565;
+            stroke-dashoffset: 565;
+            transition: stroke-dashoffset 1s linear;
+            opacity: 0.3;
+        }
+
+        .time-display {
+            font-size: 96px;
+            font-weight: 300;
+            color: white;
+            letter-spacing: 2px;
+            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            box-shadow: 0 10px 25px rgba(58, 123, 213, 0.4);
+        }
+
+        .btn-start:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(58, 123, 213, 0.5);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
+            box-shadow: 0 10px 25px rgba(255, 88, 88, 0.4);
+        }
+
+        .btn-stop:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(255, 88, 88, 0.5);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #ffd89b 0%, #ffaa00 100%);
+            box-shadow: 0 10px 25px rgba(255, 170, 0, 0.4);
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(255, 170, 0, 0.5);
+        }
+
+        .btn-settings {
+            background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%);
+            box-shadow: 0 10px 25px rgba(86, 171, 47, 0.4);
+        }
+
+        .btn-settings:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(86, 171, 47, 0.5);
+        }
+
+        .btn svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .btn span {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        /* Common panel style */
+        .settings-panel, .task-manager, .history-panel {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .settings-panel.hidden {
+            display: none;
+        }
+
+        .panel-title {
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .setting-group, .task-input-group, .history-input-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            color: white;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Common input style */
+        .setting-input, .task-input, #historyDate {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .task-input { text-align: left; }
+        .setting-input { text-align: center; }
+
+        .setting-input::placeholder, .task-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .setting-input:focus, .task-input:focus, #historyDate:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .setting-unit {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            min-width: 60px;
+        }
+
+        /* Common button style */
+        .panel-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .panel-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(58, 123, 213, 0.5);
+        }
+
+        .add-task-btn { /* Specific for small buttons next to inputs */
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%);
+            border-radius: 10px;
+            border: none; 
+            color: white; 
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .add-task-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Task List styles */
+        #taskList {
+            list-style: none;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            color: white;
+            cursor: grab;
+            transition: background 0.3s;
+        }
+        .task-item:last-child { margin-bottom: 0; }
+        .task-item.dragging { opacity: 0.5; background: rgba(255,255,255,0.3); }
+
+        .task-item-text {
+            flex-grow: 1;
+            margin-left: 10px;
+            word-break: break-word; /* Ensure long tasks wrap */
+        }
+        
+        .task-handle {
+            cursor: grab;
+            color: rgba(255,255,255,0.7);
+            padding: 0 5px;
+        }
+
+        .delete-task-btn {
+            background: none; 
+            border: none; 
+            color: #ff5858;
+            cursor: pointer; 
+            font-size: 20px;
+            padding: 0 5px;
+            transition: color 0.3s;
+        }
+        .delete-task-btn:hover {
+            color: #f857a6;
+        }
+        
+        /* NEW: Style for completed tasks */
+        .task-item.completed {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.5);
+            cursor: default;
+        }
+
+        .task-item.completed .task-item-text {
+            text-decoration: line-through;
+        }
+
+        .task-item.completed .task-handle,
+        .task-item.completed .delete-task-btn {
+            display: none; /* Hide handle and delete button for completed tasks */
+        }
+        
+        /* History Panel styles */
+        #historyDisplay {
+            margin-top: 20px;
+            color: white;
+            background: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 50px;
+        }
+        #historyDisplay h4 { margin-bottom: 10px; }
+        #historyDisplay ul { list-style-position: inside; padding-left: 10px; }
+        #historyDisplay li { margin-bottom: 5px; }
+
+        /* Stats panel */
+        .stats {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .stats-title {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000; 
+            justify-content: center; 
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-overlay.show { 
+            display: flex; 
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px; 
+            padding: 40px; 
+            max-width: 400px; 
+            width: 90%;
+            text-align: center; 
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.4s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-icon { 
+            font-size: 64px; 
+            margin-bottom: 20px; 
+            animation: bounce 1s ease infinite; 
+        }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .modal-title { 
+            color: white; 
+            font-size: 28px; 
+            font-weight: 600; 
+            margin-bottom: 15px; 
+        }
+        .modal-message { 
+            color: rgba(255, 255, 255, 0.9); 
+            font-size: 18px; 
+            margin-bottom: 30px; 
+            line-height: 1.5; 
+        }
+        .modal-btn {
+            width: 100%; 
+            padding: 18px; 
+            background: white; 
+            border: none;
+            border-radius: 12px; 
+            color: #667eea; 
+            font-size: 18px; 
+            font-weight: 700;
+            cursor: pointer; 
+            transition: all 0.3s; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        .modal-btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); 
+        }
+        
+        /* Hide number input spinners for a cleaner look */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            margin: 0; 
+        }
+        input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Study Timer</h1>
+        </div>
+
+        <!-- Timer Status Info -->
+        <div class="session-info">
+            <div class="info-item">
+                <div class="info-label">Sessions</div>
+                <div class="info-value" id="sessionCount">1/2</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Completed</div>
+                <div class="info-value" id="completedSessions">0</div>
+            </div>
+        </div>
+
+        <!-- Mode Indicator -->
+        <div class="mode-indicator">
+            <div class="mode-badge focus" id="modeBadge">Focus Time</div>
+        </div>
+
+        <!-- Timer Display -->
+        <div class="display">
+            <svg class="progress-ring" width="180" height="180">
+                <circle cx="90" cy="90" r="90" id="progressCircle"></circle>
+            </svg>
+            <div class="time-display" id="display">25:00</div>
+        </div>
+
+        <!-- Timer Controls -->
+        <div class="controls">
+            <button class="btn btn-start" id="startBtn">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span>START</span>
+            </button>
+            <button class="btn btn-stop" id="stopBtn" style="display: none;">
+                <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                <span>PAUSE</span>
+            </button>
+            <button class="btn btn-reset" id="resetBtn">
+                <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 8-8V2.5L16 6l-4 3.5V8a6 6 0 1 0 6 6h1.5a7.5 7.5 0 1 1-7.5-7.5z"/></svg>
+                <span>RESET</span>
+            </button>
+            <button class="btn btn-settings" id="settingsBtn">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m4.22-13.22l-4.22 4.22m0 6l4.22 4.22M20 12h-6m-6 0H2m13.22 4.22l-4.22-4.22m-6 0l-4.22 4.22"></path></svg>
+                <span>SETTINGS</span>
+            </button>
+        </div>
+
+        <!-- NEW: Task Manager Panel -->
+        <div class="task-manager" id="taskManager">
+            <div class="panel-title">📝 Today's Tasks</div>
+            <div class="task-input-group">
+                <div class="input-group">
+                    <input type="text" id="taskInput" class="task-input" placeholder="Enter a new task...">
+                    <button id="addTaskBtn" class="add-task-btn">Add</button>
+                </div>
+            </div>
+            <ul id="taskList">
+                <!-- Tasks will be dynamically added here -->
+            </ul>
+        </div>
+        
+        <!-- Timer Settings Panel -->
+        <div class="settings-panel hidden" id="settingsPanel">
+            <div class="panel-title">⚙️ Timer Settings</div>
+            <div class="setting-group">
+                <label class="setting-label">Focus Duration</label>
+                <div class="input-group">
+                    <input type="number" class="setting-input" id="focusTime" value="25" min="1" max="120">
+                    <span class="setting-unit">minutes</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <label class="setting-label">Break Duration</label>
+                <div class="input-group">
+                    <input type="number" class="setting-input" id="breakTime" value="5" min="1" max="60">
+                    <span class="setting-unit">minutes</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <label class="setting-label">Sessions per Cycle</label>
+                <div class="input-group">
+                    <input type="number" class="setting-input" id="sessionsPerCycle" value="2" min="1" max="10">
+                    <span class="setting-unit">sessions</span>
+                </div>
+            </div>
+            <button class="panel-btn" id="saveBtn">💾 Save Settings</button>
+        </div>
+        
+        <!-- NEW: History & Data Panel -->
+        <div class="history-panel" id="historyPanel">
+            <div class="panel-title">📜 Task History</div>
+            <div class="history-input-group">
+                <label class="setting-label">View Log for a Specific Day</label>
+                <div class="input-group">
+                    <input type="date" id="historyDate" class="setting-input">
+                    <button id="viewHistoryBtn" class="add-task-btn">View</button>
+                </div>
+                <div id="historyDisplay"></div>
+            </div>
+            <button class="panel-btn" id="downloadLogBtn">📄 Download Today's Log</button>
+        </div>
+
+        <!-- Today's Stats Panel -->
+        <div class="stats">
+            <div class="stats-title">📊 Today's Progress</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Focus Time</div>
+                    <div class="stat-value" id="totalFocusTime">0m</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Sessions Done</div>
+                    <div class="stat-value" id="totalSessions">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for phase completion -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-icon" id="modalIcon">⏰</div>
+            <div class="modal-title" id="modalTitle">Time's Up!</div>
+            <div class="modal-message" id="modalMessage">Ready to continue?</div>
+            <button class="modal-btn" id="modalBtn">START NEXT PHASE</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const taskInput = document.getElementById('taskInput');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const taskList = document.getElementById('taskList');
+        const downloadLogBtn = document.getElementById('downloadLogBtn');
+        const historyDateInput = document.getElementById('historyDate');
+        const viewHistoryBtn = document.getElementById('viewHistoryBtn');
+        const historyDisplay = document.getElementById('historyDisplay');
+
+        // Settings
+        let focusDuration = 25; // minutes
+        let breakDuration = 5; // minutes
+        let sessionsPerCycle = 2;
+
+        // State
+        let currentMode = 'focus'; // 'focus' or 'break'
+        let currentSession = 1;
+        let timeRemaining = focusDuration * 60; // seconds
+        let totalTime = focusDuration * 60;
+        let timerInterval = null;
+        let isRunning = false;
+        let notificationInterval = null;
+        let wakeLock = null;
+        
+        // NEW: Task and Stats State
+        let tasks = []; // Holds the list of pending tasks
+        let completedToday = []; // Holds tasks completed today
+
+        // Stats
+        let completedSessions = 0;
+        let totalFocusMinutes = 0;
+
+        // Audio context for sounds
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(frequency, duration) {
+            try {
+                if (!audioContext) return;
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (e) {
+                console.error("Error playing sound: ", e);
+            }
+        }
+
+        // --- Sound Functions ---
+        function playFocusStartSound() { playSound(523.25, 0.15); setTimeout(() => playSound(659.25, 0.15), 150); setTimeout(() => playSound(783.99, 0.2), 300); setTimeout(() => playSound(1046.50, 0.25), 450); }
+        function playFocusEndSound() { playSound(1046.50, 0.1); setTimeout(() => playSound(1174.66, 0.1), 100); setTimeout(() => playSound(1318.51, 0.1), 200); setTimeout(() => playSound(1567.98, 0.2), 300); setTimeout(() => playSound(1567.98, 0.1), 500); setTimeout(() => playSound(1318.51, 0.3), 600); }
+        function playBreakStartSound() { playSound(880, 0.2); setTimeout(() => playSound(783.99, 0.2), 200); setTimeout(() => playSound(659.25, 0.2), 400); setTimeout(() => playSound(523.25, 0.3), 600); }
+        function playBreakEndSound() { playSound(659.25, 0.15); setTimeout(() => playSound(659.25, 0.15), 200); setTimeout(() => playSound(783.99, 0.2), 400); setTimeout(() => playSound(1046.50, 0.25), 600); }
+        function playAlertLoop() { playSound(1000, 0.3); setTimeout(() => playSound(1200, 0.3), 400); }
+
+        // --- Wake Lock (Keep Screen On) ---
+        async function requestWakeLock() { 
+            try { 
+                if ('wakeLock' in navigator) { 
+                    wakeLock = await navigator.wakeLock.request('screen'); 
+                    console.log('Wake Lock active'); 
+                    wakeLock.addEventListener('release', () => console.log('Wake Lock released')); 
+                } 
+            } catch (err) { 
+                console.log('Wake Lock error:', err); 
+            } 
+        }
+        function releaseWakeLock() { 
+            if (wakeLock !== null) { 
+                wakeLock.release(); 
+                wakeLock = null; 
+            } 
+        }
+
+        // --- Timer Controls ---
+        function start() { 
+            if (isRunning) return;
+            // Resume audio context if it was suspended
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            isRunning = true; 
+            timerInterval = setInterval(updateTimer, 1000); 
+            requestWakeLock(); 
+            document.getElementById('startBtn').style.display = 'none'; 
+            document.getElementById('stopBtn').style.display = 'flex'; 
+            if (currentMode === 'focus') { 
+                playFocusStartSound(); 
+            } else { 
+                playBreakStartSound(); 
+            } 
+        }
+        
+        function stop() { 
+            if (!isRunning) return;
+            isRunning = false; 
+            clearInterval(timerInterval); 
+            releaseWakeLock(); 
+            document.getElementById('startBtn').style.display = 'flex'; 
+            document.getElementById('stopBtn').style.display = 'none'; 
+            playSound(400, 0.1); 
+        }
+        
+        function reset() {
+            stop();
+            currentMode = 'focus';
+            currentSession = 1;
+            timeRemaining = focusDuration * 60;
+            totalTime = focusDuration * 60;
+            updateDisplay();
+            updateModeDisplay();
+            updateSessionDisplay();
+            playSound(500, 0.2);
+        }
+
+        // --- Timer Logic ---
+        function updateTimer() { 
+            timeRemaining--; 
+            if (timeRemaining <= 0) { 
+                completePhase(); 
+            } 
+            updateDisplay(); 
+        }
+
+        function completePhase() {
+            stop();
+            notificationInterval = setInterval(playAlertLoop, 3000);
+            playAlertLoop();
+            
+            if (currentMode === 'focus') {
+                playFocusEndSound();
+                completedSessions++;
+                totalFocusMinutes += focusDuration;
+                updateStats();
+                
+                // NEW: Auto-complete the top task
+                if (tasks.length > 0) {
+                    const completedTask = tasks.shift(); // Remove the first task
+                    completedToday.push(completedTask); // Add it to today's completed list
+                    renderTasks(); // Re-render the task list
+                    saveStateToLocal(); // Save the new state
+                }
+
+                if (currentSession >= sessionsPerCycle) {
+                    showPhaseCompleteModal('🎉 Full Cycle Complete!', 'Congratulations! You completed a full study cycle.\nTake a well-deserved break!', 'break');
+                    currentSession = 1;
+                } else {
+                    currentSession++;
+                    showPhaseCompleteModal('⏰ Focus Complete!', 'Great work! Time for a break.', 'break');
+                }
+            } else {
+                playBreakEndSound();
+                showPhaseCompleteModal('⏰ Break Over!', 'Ready for the next focus session?', 'focus');
+            }
+        }
+
+        // --- UI Update Functions ---
+        function updateDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            document.getElementById('display').textContent = `${pad(minutes)}:${pad(seconds)}`;
+            const progress = 1 - (timeRemaining / totalTime);
+            const offset = 565 - (565 * progress);
+            document.getElementById('progressCircle').style.strokeDashoffset = offset;
+            document.title = `${pad(minutes)}:${pad(seconds)} - ${currentMode === 'focus' ? 'Focus' : 'Break'} Time`;
+        }
+
+        function updateModeDisplay() {
+            const badge = document.getElementById('modeBadge');
+            badge.className = `mode-badge ${currentMode}`;
+            badge.textContent = currentMode === 'focus' ? '🎯 Focus Time' : '☕ Break Time';
+            document.body.style.background = currentMode === 'focus' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #a8e063 0%, #56ab2f 100%)';
+        }
+
+        function updateSessionDisplay() {
+            document.getElementById('sessionCount').textContent = `${currentSession}/${sessionsPerCycle}`;
+            document.getElementById('completedSessions').textContent = completedSessions;
+        }
+
+        function updateStats() {
+            document.getElementById('totalFocusTime').textContent = `${totalFocusMinutes}m`;
+            document.getElementById('totalSessions').textContent = completedSessions;
+        }
+
+        // --- Settings Panel ---
+        function toggleSettings() { 
+            document.getElementById('settingsPanel').classList.toggle('hidden'); 
+        }
+
+        function saveSettings() {
+            const newFocus = parseInt(document.getElementById('focusTime').value);
+            const newBreak = parseInt(document.getElementById('breakTime').value);
+            const newSessions = parseInt(document.getElementById('sessionsPerCycle').value);
+            if (newFocus < 1 || newBreak < 1 || newSessions < 1) { 
+                // Using a custom modal/alert here would be better, but window.alert is fine for settings.
+                alert('Please enter valid values (minimum 1)'); 
+                return; 
+            }
+            focusDuration = newFocus;
+            breakDuration = newBreak;
+            sessionsPerCycle = newSessions;
+            reset();
+            toggleSettings();
+            playSound(800, 0.2);
+            // alert('✅ Settings saved successfully!');
+        }
+
+        function pad(number) { return number < 10 ? '0' + number : number; }
+
+        // --- Completion Modal ---
+        function showPhaseCompleteModal(title, message, nextMode) {
+            const modal = document.getElementById('modalOverlay');
+            modal.querySelector('#modalTitle').textContent = title;
+            modal.querySelector('#modalMessage').textContent = message;
+            modal.querySelector('#modalIcon').textContent = nextMode === 'focus' ? '🎯' : '☕';
+            modal.classList.add('show');
+            
+            modal.querySelector('#modalBtn').onclick = function() {
+                clearInterval(notificationInterval);
+                currentMode = nextMode;
+                timeRemaining = (nextMode === 'focus' ? focusDuration : breakDuration) * 60;
+                totalTime = timeRemaining;
+                updateDisplay();
+                updateModeDisplay();
+                updateSessionDisplay();
+                modal.classList.remove('show');
+                start();
+            };
+        }
+        
+        // NEW: ----- Task Management and Data Persistence Functions -----
+
+        function getTodayDateString() {
+            const today = new Date();
+            // Format to YYYY-MM-DD to match the date input value
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function renderTasks() {
+            taskList.innerHTML = ''; // Clear existing list
+            
+            // Render incomplete tasks
+            tasks.forEach((taskText, index) => {
+                const li = document.createElement('li');
+                li.className = 'task-item'; // No 'completed' class
+                li.setAttribute('draggable', 'true');
+                li.dataset.index = index;
+
+                li.innerHTML = `
+                    <span class="task-handle">☰</span>
+                    <span class="task-item-text">${taskText}</span>
+                    <button class="delete-task-btn" data-index="${index}">&times;</button>
+                `;
+                taskList.appendChild(li);
+            });
+
+            // NEW: Render completed tasks
+            completedToday.forEach((taskText) => {
+                const li = document.createElement('li');
+                li.className = 'task-item completed'; // Add 'completed' class
+                li.setAttribute('draggable', 'false'); // Not draggable
+
+                li.innerHTML = `
+                    <span class="task-handle">✅</span>
+                    <span class="task-item-text">${taskText}</span>
+                    <button class="delete-task-btn" style="display: none;">&times;</button>
+                `;
+                taskList.appendChild(li);
+            });
+        }
+        
+        function addTask() {
+            const taskText = taskInput.value.trim();
+            if (taskText) {
+                tasks.push(taskText);
+                taskInput.value = '';
+                renderTasks();
+                saveStateToLocal();
+            }
+        }
+        
+        function deleteTask(index) {
+            tasks.splice(index, 1);
+            renderTasks();
+            saveStateToLocal();
+        }
+
+        function saveStateToLocal() {
+            try {
+                const todayStr = getTodayDateString();
+                const dailyLog = {
+                    completed: completedToday,
+                    incomplete: tasks,
+                    stats: { completedSessions, totalFocusMinutes }
+                };
+                
+                // Save the log for today's date for history purposes
+                localStorage.setItem(`pomodoro-log-${todayStr}`, JSON.stringify(dailyLog));
+                // Save the current pending tasks to a separate key so we can load it next time
+                localStorage.setItem('pomodoro-pending-tasks', JSON.stringify(tasks));
+            } catch (e) {
+                console.error("Failed to save to localStorage: ", e);
+            }
+        }
+
+        function loadStateFromLocal() {
+            try {
+                const todayStr = getTodayDateString();
+                const pendingTasks = JSON.parse(localStorage.getItem('pomodoro-pending-tasks') || '[]');
+                const todaysLog = JSON.parse(localStorage.getItem(`pomodoro-log-${todayStr}`) || '{}');
+
+                tasks = pendingTasks;
+                completedToday = todaysLog.completed || [];
+                completedSessions = todaysLog.stats?.completedSessions || 0;
+                totalFocusMinutes = todaysLog.stats?.totalFocusMinutes || 0;
+            } catch (e) {
+                console.error("Failed to load from localStorage: ", e);
+                tasks = [];
+                completedToday = [];
+            }
+
+            renderTasks();
+            updateStats();
+            updateSessionDisplay();
+        }
+
+        function generateAndDownloadLog() {
+            const todayStr = getTodayDateString();
+            let logContent = `Pomodoro Log for: ${todayStr}\n\n`;
+            
+            logContent += "✅ Completed Tasks:\n";
+            if (completedToday.length > 0) {
+                completedToday.forEach(task => logContent += `- ${task}\n`);
+            } else {
+                logContent += "- None\n";
+            }
+            
+            logContent += "\n📝 Incomplete Tasks (Pending):\n";
+            if (tasks.length > 0) {
+                tasks.forEach(task => logContent += `- ${task}\n`);
+            } else {
+                logContent += "- None\n";
+            }
+
+            logContent += "\n📊 Stats:\n";
+            logContent += `- Total Focus Time: ${totalFocusMinutes} minutes\n`;
+            logContent += `- Completed Sessions: ${completedSessions}\n`;
+            
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pomodoro-log-${todayStr}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function viewHistory() {
+            const dateStr = historyDateInput.value;
+            if (!dateStr) {
+                historyDisplay.innerHTML = `<p>Please select a date.</p>`;
+                return;
+            }
+
+            let logData = null;
+            try {
+                logData = JSON.parse(localStorage.getItem(`pomodoro-log-${dateStr}`) || 'null');
+            } catch (e) {
+                console.error("Failed to parse history data: ", e);
+                historyDisplay.innerHTML = `<p>Error loading data for ${dateStr}.</p>`;
+                return;
+            }
+
+
+            if (!logData) {
+                historyDisplay.innerHTML = `<p>No data found for ${dateStr}.</p>`;
+                return;
+            }
+            
+            let historyHTML = `<h4>Log for ${dateStr}</h4>`;
+            
+            historyHTML += `<h5>✅ Completed Tasks: (${logData.completed.length})</h5>`;
+            if (logData.completed.length > 0) {
+                historyHTML += '<ul>';
+                logData.completed.forEach(task => historyHTML += `<li>${task}</li>`);
+                historyHTML += '</ul>';
+            } else {
+                historyHTML += `<p>No tasks were completed.</p>`;
+            }
+
+            historyHTML += `<h5 style="margin-top: 15px;">📝 Incomplete Tasks: (${logData.incomplete.length})</h5>`;
+            if (logData.incomplete.length > 0) {
+                historyHTML += '<ul>';
+                logData.incomplete.forEach(task => historyHTML += `<li>${task}</li>`);
+                historyHTML += '</ul>';
+            } else {
+                 historyHTML += `<p>No tasks were left incomplete.</p>`;
+            }
+            
+            historyDisplay.innerHTML = historyHTML;
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('startBtn').addEventListener('click', start);
+        document.getElementById('stopBtn').addEventListener('click', stop);
+        document.getElementById('resetBtn').addEventListener('click', reset);
+        document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
+        document.getElementById('saveBtn').addEventListener('click', saveSettings);
+        
+        // NEW: Task and History Event Listeners
+        addTaskBtn.addEventListener('click', addTask);
+        taskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+        
+        taskList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-task-btn')) {
+                const index = parseInt(e.target.dataset.index);
+                deleteTask(index);
+            }
+        });
+        
+        downloadLogBtn.addEventListener('click', generateAndDownloadLog);
+        viewHistoryBtn.addEventListener('click', viewHistory);
+
+        // --- Keyboard shortcuts ---
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement === taskInput) return; // Don't trigger shortcuts if typing a task
+            if (e.code === 'Space') { e.preventDefault(); isRunning ? stop() : start(); } 
+            else if (e.code === 'KeyR') { reset(); } 
+            else if (e.code === 'KeyS') { toggleSettings(); }
+        });
+
+        // Handle tab visibility change
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && isRunning) requestWakeLock(); });
+        
+        // Try to prevent timer throttling when tab is in background (not foolproof)
+        let keepAliveInterval = setInterval(() => { if (isRunning) document.title = document.title; }, 1000);
+        
+        // NEW: Drag and Drop for tasks
+        let dragStartIndex;
+        
+        function dragStart(e) {
+            // UPDATED: Allow dragging from anywhere on the task item, not just the handle
+            const taskItem = e.target.closest('.task-item');
+
+            // Check if we are on a valid, incomplete task item
+            if (taskItem && !taskItem.classList.contains('completed')) {
+                // Check if the user is trying to delete the task. If so, don't drag.
+                if (e.target.classList.contains('delete-task-btn')) {
+                    e.preventDefault(); // Prevent dragging when clicking delete
+                    return;
+                }
+                
+                dragStartIndex = +taskItem.dataset.index;
+                taskItem.classList.add('dragging'); // Add class to the <li>
+            } else {
+                // If it's a completed item or not a task item, prevent drag
+                e.preventDefault();
+            }
+        }
+        
+        function getDragAfterElement(container, y) {
+            // Only consider incomplete tasks for re-ordering
+            const draggableElements = [...container.querySelectorAll('.task-item:not(.completed):not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+        
+        // NEW: Re-added the missing dragOver function
+        function dragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            const draggingItem = document.querySelector('.dragging');
+            if (!draggingItem) return;
+
+            const afterElement = getDragAfterElement(taskList, e.clientY);
+            if (afterElement == null) {
+                // We are at the end of the incomplete list
+                const firstCompleted = taskList.querySelector('.task-item.completed');
+                if (firstCompleted) {
+                    // Insert before the first completed task
+                    taskList.insertBefore(draggingItem, firstCompleted);
+                } else {
+                    // No completed tasks, just append to the end
+                    taskList.appendChild(draggingItem);
+                }
+            } else {
+                // Insert before the next incomplete task
+                taskList.insertBefore(draggingItem, afterElement);
+            }
+        }
+
+        function drop(e) {
+            const draggingItem = taskList.querySelector('.dragging');
+            if (draggingItem) {
+                draggingItem.classList.remove('dragging');
+                
+                // Re-order the tasks array based on the new DOM order of *incomplete* tasks
+                const newTasksOrder = [];
+                // Only select text from non-completed items
+                const taskItems = taskList.querySelectorAll('.task-item:not(.completed) .task-item-text');
+                taskItems.forEach(item => newTasksOrder.push(item.textContent));
+                tasks = newTasksOrder;
+                
+                renderTasks(); // Re-render to fix indices
+                saveStateToLocal();
+            }
+        }
+        
+        // We add listeners to the list itself for event delegation
+        taskList.addEventListener('dragstart', dragStart);
+        taskList.addEventListener('dragover', dragOver);
+        taskList.addEventListener('drop', drop);
+        taskList.addEventListener('dragend', () => {
+             const draggingItem = taskList.querySelector('.dragging');
+            if (draggingItem) {
+                draggingItem.classList.remove('dragging');
+            }
+        });
+
+
+        // --- Initialize App ---
+        function init() {
+            updateDisplay();
+            updateModeDisplay();
+            updateSessionDisplay();
+            loadStateFromLocal(); // This will load data AND render tasks/stats
+        }
+
+        init();
+    </script>
+</body>
+</html>
+
+
+
+
+
