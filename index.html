@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pomodoro Study Timer</title>
-    <!-- NEW: Added a dynamic SVG favicon -->
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><circle cx=%2750%27 cy=%2750%27 r=%2745%27 fill=%27%23f5576c%27/><circle cx=%2750%27 cy=%2750%27 r=%2730%27 fill=%27white%27/><circle cx=%2750%27 cy=%2750%27 r=%2715%27 fill=%27%23f5576c%27/></svg>">
-    <!-- NEW: Added Chart.js for stats -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -15,16 +15,19 @@
             box-sizing: border-box;
         }
 
+        html {
+             scroll-behavior: smooth;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Aligned to top for scrolling */
-            overflow-y: auto; /* Allow scrolling for more content */
-            padding: 40px 0;
-            /* GUI UPDATE: Smooth background transitions */
+            align-items: flex-start; /* Aligned to top */
+            overflow-y: auto;
+            padding: 20px 0; /* Reduced top/bottom padding for smaller screens */
             transition: background 1s ease;
         }
 
@@ -32,13 +35,23 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
             border-radius: 30px;
-            padding: 40px;
+            padding: 30px; /* Adjusted padding */
             box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.2);
             max-width: 550px;
             width: 90%;
             animation: slideIn 0.5s ease-out;
         }
+        /* RESPONSIVE: Increase padding on larger screens */
+        @media (min-width: 640px) {
+            body {
+                padding: 40px 0;
+            }
+             .container {
+                padding: 40px;
+            }
+        }
+
 
         @keyframes slideIn {
             from {
@@ -53,24 +66,35 @@
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px; /* Adjusted margin */
         }
 
         .header h1 {
             color: white;
-            font-size: 32px;
-            margin-bottom: 10px;
+            font-size: 28px; /* Adjusted size */
+            margin-bottom: 8px;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         }
+         @media (min-width: 640px) {
+            .header h1 {
+                 font-size: 32px;
+            }
+         }
+
 
         .session-info {
             display: flex;
             justify-content: space-around;
-            margin-bottom: 30px;
-            padding: 20px;
+            margin-bottom: 25px;
+            padding: 15px; /* Adjusted padding */
             background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
         }
+         @media (min-width: 640px) {
+             .session-info {
+                padding: 20px;
+             }
+         }
 
         .info-item {
             text-align: center;
@@ -78,34 +102,52 @@
 
         .info-label {
             color: rgba(255, 255, 255, 0.8);
-            font-size: 12px;
+            font-size: 11px; /* Adjusted size */
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 5px;
         }
+         @media (min-width: 640px) {
+            .info-label {
+                 font-size: 12px;
+            }
+         }
 
         .info-value {
             color: white;
-            font-size: 24px;
+            font-size: 20px; /* Adjusted size */
             font-weight: 600;
         }
+         @media (min-width: 640px) {
+             .info-value {
+                font-size: 24px;
+             }
+         }
+
 
         .mode-indicator {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .mode-badge {
             display: inline-block;
-            padding: 10px 30px;
+            padding: 8px 25px; /* Adjusted padding */
             border-radius: 20px;
             color: white;
             font-weight: 600;
-            font-size: 18px;
+            font-size: 16px; /* Adjusted size */
             text-transform: uppercase;
             letter-spacing: 1px;
             transition: all 0.3s;
         }
+         @media (min-width: 640px) {
+             .mode-badge {
+                padding: 10px 30px;
+                font-size: 18px;
+             }
+         }
+
 
         .mode-badge.focus {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
@@ -124,52 +166,95 @@
 
         .display {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             position: relative;
+            height: 150px; /* Give space for ring */
         }
+         @media (min-width: 640px) {
+            .display {
+                 height: 180px;
+                 margin-bottom: 30px;
+            }
+         }
 
         .progress-ring {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            width: 150px; /* Adjusted size */
+            height: 150px;
         }
+         @media (min-width: 640px) {
+             .progress-ring {
+                width: 180px;
+                height: 180px;
+             }
+         }
 
         .progress-ring circle {
             stroke: white;
             stroke-width: 8;
             fill: transparent;
-            stroke-dasharray: 565;
-            stroke-dashoffset: 565;
+            /* Recalculate dasharray based on new size: 2 * pi * (radius - stroke/2) */
+            stroke-dasharray: 446; /* Approx 2 * 3.14159 * (75 - 4) */
+            stroke-dashoffset: 446;
             transition: stroke-dashoffset 1s linear;
             opacity: 0.3;
+             transform-origin: 50% 50%; /* Ensure scaling/rotation is centered */
+             transform: rotate(-90deg); /* Start at the top */
+             cx: 50%; cy: 50%; r: calc(50% - 4px); /* Use relative units */
         }
+         @media (min-width: 640px) {
+             .progress-ring circle {
+                 stroke-dasharray: 540; /* Approx 2 * 3.14159 * (90 - 4) */
+                 stroke-dashoffset: 540;
+             }
+         }
+
 
         .time-display {
-            font-size: 96px;
+            font-size: 72px; /* RESPONSIVE: Reduced base size */
             font-weight: 300;
             color: white;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             text-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
             font-variant-numeric: tabular-nums;
             line-height: 1;
+             position: absolute; /* Center over the ring */
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -50%);
         }
+         @media (min-width: 640px) {
+             .time-display {
+                 font-size: 96px; /* Restore larger size */
+                 letter-spacing: 2px;
+             }
+         }
+
 
         .controls {
             display: flex;
             justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 15px; /* RESPONSIVE: Smaller gap */
+            margin-bottom: 25px;
             flex-wrap: wrap;
         }
+         @media (min-width: 640px) {
+             .controls {
+                 gap: 20px; /* Restore larger gap */
+             }
+         }
+
 
         .btn {
-            width: 80px;
-            height: 80px;
+            width: 70px; /* Adjusted size */
+            height: 70px;
             border-radius: 50%;
             border: none;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px; /* Adjusted size */
             font-weight: 600;
             color: white;
             transition: all 0.3s;
@@ -180,6 +265,14 @@
             justify-content: center;
             flex-direction: column;
         }
+         @media (min-width: 640px) {
+             .btn {
+                 width: 80px;
+                 height: 80px;
+                 font-size: 16px;
+             }
+         }
+
 
         .btn::before {
             content: '';
@@ -199,65 +292,51 @@
             height: 100%;
         }
 
-        .btn-start {
-            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
-            box-shadow: 0 10px 25px rgba(58, 123, 213, 0.4);
-        }
-
-        .btn-start:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(58, 123, 213, 0.5);
-        }
-
-        .btn-stop {
-            background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
-            box-shadow: 0 10px 25px rgba(255, 88, 88, 0.4);
-        }
-
-        .btn-stop:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(255, 88, 88, 0.5);
-        }
-
-        .btn-reset {
-            background: linear-gradient(135deg, #ffd89b 0%, #ffaa00 100%);
-            box-shadow: 0 10px 25px rgba(255, 170, 0, 0.4);
-        }
-
-        .btn-reset:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(255, 170, 0, 0.5);
-        }
-
-        .btn-settings {
-            background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%);
-            box-shadow: 0 10px 25px rgba(86, 171, 47, 0.4);
-        }
-
-        .btn-settings:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(86, 171, 47, 0.5);
-        }
+        .btn-start { background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); box-shadow: 0 10px 25px rgba(58, 123, 213, 0.4); }
+        .btn-start:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(58, 123, 213, 0.5); }
+        .btn-stop { background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%); box-shadow: 0 10px 25px rgba(255, 88, 88, 0.4); }
+        .btn-stop:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255, 88, 88, 0.5); }
+        .btn-reset { background: linear-gradient(135deg, #ffd89b 0%, #ffaa00 100%); box-shadow: 0 10px 25px rgba(255, 170, 0, 0.4); }
+        .btn-reset:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255, 170, 0, 0.5); }
+        .btn-settings { background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%); box-shadow: 0 10px 25px rgba(86, 171, 47, 0.4); }
+        .btn-settings:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(86, 171, 47, 0.5); }
 
         .btn svg {
-            width: 24px;
-            height: 24px;
+            width: 22px; /* Adjusted size */
+            height: 22px;
             fill: white;
         }
+         @media (min-width: 640px) {
+            .btn svg {
+                width: 24px;
+                height: 24px;
+            }
+         }
 
         .btn span {
-            font-size: 12px;
-            margin-top: 5px;
+            font-size: 10px; /* Adjusted size */
+            margin-top: 4px;
         }
+         @media (min-width: 640px) {
+            .btn span {
+                 font-size: 12px;
+                 margin-top: 5px;
+            }
+         }
 
         /* Common panel style */
         .settings-panel, .task-manager, .history-panel, .ai-panel {
             background: rgba(255, 255, 255, 0.15);
             border-radius: 15px;
-            padding: 25px;
+            padding: 20px; /* Adjusted padding */
             margin-top: 20px;
             margin-bottom: 20px;
         }
+         @media (min-width: 640px) {
+             .settings-panel, .task-manager, .history-panel, .ai-panel {
+                 padding: 25px;
+             }
+         }
 
         .settings-panel.hidden {
             display: none;
@@ -265,11 +344,16 @@
 
         .panel-title {
             color: white;
-            font-size: 20px;
+            font-size: 18px; /* Adjusted size */
             font-weight: 600;
             margin-bottom: 20px;
             text-align: center;
         }
+         @media (min-width: 640px) {
+            .panel-title {
+                 font-size: 20px;
+            }
+         }
         
         .panel-subtitle {
             color: white;
@@ -301,25 +385,42 @@
 
         /* Common input style */
         .setting-input, .task-input, #historyDate, #taskPoms,
-        #historyStartDate, #historyEndDate, #sessionComment, #taskPomsTomorrow {
+        #historyStartDate, #historyEndDate, #sessionComment, #taskPomsTomorrow,
+        #mentorPrompt { /* Added mentor prompt */
             flex: 1;
             padding: 12px;
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 10px;
             color: white;
-            font-size: 16px;
+            font-size: 14px; /* Adjusted base font size */
         }
+         @media (min-width: 640px) {
+             .setting-input, .task-input, #historyDate, #taskPoms,
+            #historyStartDate, #historyEndDate, #sessionComment, #taskPomsTomorrow,
+            #mentorPrompt {
+                font-size: 16px;
+             }
+         }
         
         input[type="date"] {
             color-scheme: dark;
+            min-width: 100px; /* Prevent shrinking too much */
         }
+        
+        .task-input { text-align: left; }
         .setting-input, #taskPoms, #taskPomsTomorrow { text-align: center; }
 
         #taskPoms, #taskPomsTomorrow {
-            flex: 0 1 90px;
+            flex: 0 1 70px; /* Adjusted size */
             -moz-appearance: textfield;
         }
+         @media (min-width: 640px) {
+             #taskPoms, #taskPomsTomorrow {
+                 flex-basis: 90px;
+             }
+         }
+
         #taskPoms::placeholder, #taskPomsTomorrow::placeholder {
             color: rgba(255, 255, 255, 0.6);
         }
@@ -330,14 +431,29 @@
             -webkit-appearance: none;
             margin: 0;
         }
+        
+        /* FIX: Style #mentorPrompt and #sessionComment as textareas */
+        #mentorPrompt, #sessionComment {
+            width: 100%; /* Ensure full width */
+            min-height: 80px; /* Ensure minimum height */
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.5;
+            flex: 1 1 auto; /* Allow proper flex behavior */
+        }
+        
+        #mentorPrompt { margin-bottom: 10px; }
+        #sessionComment { margin: -10px 0 20px 0; }
 
 
-        .setting-input::placeholder, .task-input::placeholder, #sessionComment::placeholder {
+        .setting-input::placeholder, .task-input::placeholder, #sessionComment::placeholder,
+        #mentorPrompt::placeholder {
             color: rgba(255, 255, 255, 0.6);
         }
 
         .setting-input:focus, .task-input:focus, #historyDate:focus, #taskPoms:focus,
-        #historyStartDate:focus, #historyEndDate:focus, #sessionComment:focus {
+        #historyStartDate:focus, #historyEndDate:focus, #sessionComment:focus, #taskPomsTomorrow:focus,
+        #mentorPrompt:focus {
             outline: none;
             background: rgba(255, 255, 255, 0.3);
             border-color: rgba(255, 255, 255, 0.5);
@@ -352,7 +468,7 @@
         /* Common button style */
         .panel-btn {
             width: 100%;
-            padding: 15px;
+            padding: 12px; /* Adjusted padding */
             background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
             border: none;
             border-radius: 10px;
@@ -363,18 +479,20 @@
             transition: all 0.3s;
             margin-top: 10px;
         }
+         @media (min-width: 640px) {
+            .panel-btn { padding: 15px; }
+         }
 
         .panel-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(58, 123, 213, 0.5);
         }
         
-        #getInsightsBtn {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
+        #getInsightsBtn { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        #getMentorBtn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 
         .add-task-btn { /* Specific for small buttons next to inputs */
-            padding: 12px 20px;
+            padding: 12px 15px; /* Adjusted padding */
             background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%);
             border-radius: 10px;
             border: none; 
@@ -383,13 +501,13 @@
             cursor: pointer;
             transition: all 0.3s;
         }
-        .add-task-btn:hover {
-            transform: scale(1.05);
-        }
+         @media (min-width: 640px) {
+             .add-task-btn { padding: 12px 20px; }
+         }
+        .add-task-btn:hover { transform: scale(1.05); }
         
-        /* NEW: Button style for tomorrow's task add */
         .add-task-tomorrow-btn {
-            padding: 12px 20px;
+            padding: 12px 15px; /* Adjusted padding */
             background: linear-gradient(135deg, #ffd89b 0%, #ffaa00 100%);
             border-radius: 10px;
             border: none; 
@@ -398,9 +516,10 @@
             cursor: pointer;
             transition: all 0.3s;
         }
-        .add-task-tomorrow-btn:hover {
-             transform: scale(1.05);
-        }
+         @media (min-width: 640px) {
+            .add-task-tomorrow-btn { padding: 12px 20px; }
+         }
+        .add-task-tomorrow-btn:hover { transform: scale(1.05); }
 
 
         /* Task List styles */
@@ -419,8 +538,6 @@
             display: none; /* Hidden by default */
         }
         
-        /* Style for "Tomorrow" panel task items */
-        /* UI FIX: Changed from dark bg to light bg */
         #taskListTomorrow .task-item {
              background: rgba(255, 255, 255, 0.05);
              border: 1px dashed rgba(255, 216, 155, 0.3);
@@ -431,13 +548,17 @@
             align-items: center;
             justify-content: space-between;
             background: rgba(255, 255, 255, 0.1);
-            padding: 12px;
+            padding: 10px; /* Adjusted padding */
             border-radius: 8px;
             margin-bottom: 8px;
             color: white;
             cursor: grab;
             transition: all 0.2s ease-out;
+            gap: 5px; /* Add gap between elements */
         }
+         @media (min-width: 640px) {
+            .task-item { padding: 12px; gap: 10px; }
+         }
         .task-item:last-child { margin-bottom: 0; }
         .task-item.dragging { opacity: 0.5; background: rgba(255,255,255,0.3); }
 
@@ -447,7 +568,6 @@
             background: rgba(255, 255, 255, 0.2);
         }
         
-        /* UI FIX: Hover for tomorrow's tasks */
         #taskListTomorrow .task-item:hover {
             background: rgba(255, 216, 155, 0.2);
         }
@@ -455,20 +575,32 @@
         .task-item-details {
             display: flex;
             align-items: center;
-            flex-grow: 1;
-            margin-left: 10px;
+            flex-grow: 1; /* Allow text to take space */
+            margin-left: 5px; /* Reduced margin */
             word-break: break-word; /* Wrap long text */
+             min-width: 0; /* Allow shrinking */
+        }
+         @media (min-width: 640px) {
+            .task-item-details { margin-left: 10px; }
+         }
+
+        .task-item-text {
+            flex-grow: 1;
+             min-width: 0; /* Allow text to shrink and wrap */
         }
 
         .task-pom-count {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 5px;
             padding: 2px 6px;
-            font-size: 12px;
+            font-size: 11px; /* Adjusted size */
             margin-left: auto; /* Pushes it to the right */
-            margin-right: 10px;
+            margin-right: 5px; /* Reduced margin */
             flex-shrink: 0; /* Prevent shrinking */
         }
+         @media (min-width: 640px) {
+             .task-pom-count { font-size: 12px; margin-right: 10px;}
+         }
         
         #taskListTomorrow .task-pom-count {
             background: rgba(255, 216, 155, 0.2);
@@ -479,39 +611,34 @@
             cursor: grab;
             color: rgba(255,255,255,0.7);
             padding: 0 5px;
+            flex-shrink: 0;
         }
 
-        /* NEW: Common icon button style */
+        /* Common icon button style */
         .task-btn {
             background: none; 
             border: none; 
             cursor: pointer; 
-            font-size: 20px;
-            padding: 0 5px;
+            font-size: 18px; /* Adjusted size */
+            padding: 0 3px; /* Adjusted padding */
             transition: all 0.3s;
             flex-shrink: 0;
             fill: white;
-            width: 20px;
-            height: 20px;
-            margin-left: 5px;
+            width: 18px; /* Adjusted size */
+            height: 18px;
+            margin-left: 3px; /* Adjusted margin */
         }
+         @media (min-width: 640px) {
+             .task-btn {
+                 font-size: 20px; padding: 0 5px; width: 20px; height: 20px; margin-left: 5px;
+             }
+         }
 
-        .delete-task-btn {
-            color: #ff5858;
-        }
-        .delete-task-btn:hover {
-            color: #f857a6;
-            transform: scale(1.1);
-        }
+        .delete-task-btn { color: #ff5858; }
+        .delete-task-btn:hover { color: #f857a6; transform: scale(1.1); }
         
-        /* NEW: Postpone/Duplicate button styles */
-        .postpone-task-btn, .duplicate-task-btn {
-            fill: #ffd89b;
-        }
-        .postpone-task-btn:hover, .duplicate-task-btn:hover {
-            fill: #ffaa00;
-            transform: scale(1.1);
-        }
+        .postpone-task-btn, .duplicate-task-btn { fill: #ffd89b; }
+        .postpone-task-btn:hover, .duplicate-task-btn:hover { fill: #ffaa00; transform: scale(1.1); }
 
         /* Style for completed tasks */
         .task-item.completed {
@@ -519,33 +646,19 @@
             color: rgba(255, 255, 255, 0.5);
             cursor: default;
         }
-
-        .task-item.completed .task-item-text {
-            text-decoration: line-through;
-        }
-        
-        .task-item.completed .task-pom-count {
-            background: rgba(0, 0, 0, 0.2);
-        }
-
+        .task-item.completed .task-item-text { text-decoration: line-through; }
+        .task-item.completed .task-pom-count { background: rgba(0, 0, 0, 0.2); }
         .task-item.completed .task-handle,
         .task-item.completed .delete-task-btn,
-        .task-item.completed .postpone-task-btn, /* NEW: Hide on completed */
-        .task-item.completed .duplicate-task-btn { /* NEW: Hide on completed */
-            display: none; 
-        }
+        .task-item.completed .postpone-task-btn, 
+        .task-item.completed .duplicate-task-btn { display: none; }
         
-        /* Hide postpone/duplicate on tomorrow's list */
+        /* Hide buttons on tomorrow's list */
         #taskListTomorrow .task-item .postpone-task-btn,
         #taskListTomorrow .task-item .duplicate-task-btn,
-        #taskListTomorrow .task-item .task-handle {
-            display: none;
-        }
+        #taskListTomorrow .task-item .task-handle { display: none; }
         
-        /* UI FIX: Align tomorrow's task details */
-        #taskListTomorrow .task-item-details {
-            margin-left: 0;
-        }
+        #taskListTomorrow .task-item-details { margin-left: 0; }
         
         /* History Panel styles */
         #historyDisplay {
@@ -570,7 +683,6 @@
             font-size: 14px;
         }
 
-
         /* Stats panel */
         .stats {
             background: rgba(255, 255, 255, 0.1);
@@ -589,35 +701,60 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(2, 1fr); /* RESPONSIVE: Default to 2 columns */
+            gap: 10px; /* Adjusted gap */
         }
-
+         /* RESPONSIVE: Switch to 3 columns on larger screens */
+         @media (min-width: 500px) { 
+             .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 15px; }
+         }
+        
         .stat-item {
             background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
+            padding: 10px; /* Adjusted padding */
             border-radius: 10px;
             text-align: center;
         }
+         @media (min-width: 640px) {
+             .stat-item { padding: 15px; }
+         }
 
         .stat-label {
             color: rgba(255, 255, 255, 0.8);
-            font-size: 12px;
+            font-size: 11px; /* Adjusted size */
             margin-bottom: 5px;
         }
+         @media (min-width: 640px) {
+             .stat-label { font-size: 12px; }
+         }
 
         .stat-value {
             color: white;
-            font-size: 24px;
+            font-size: 20px; /* Adjusted size */
             font-weight: 600;
         }
+         @media (min-width: 640px) {
+             .stat-value { font-size: 24px; }
+         }
         
         .chart-container {
             margin-top: 25px;
             position: relative;
-            height: 200px; /* Give canvas a set height */
+            height: 180px; /* Adjusted size */
         }
+         @media (min-width: 640px) {
+             .chart-container { height: 200px; }
+         }
         
+        .line-chart-container {
+            margin-top: 35px; /* Add space above the line chart */
+            position: relative;
+            height: 200px; /* Adjusted size */
+        }
+         @media (min-width: 640px) {
+             .line-chart-container { height: 250px; }
+         }
+
         #historyStatsMessage {
             text-align: center;
             color: rgba(255, 255, 255, 0.8);
@@ -625,8 +762,8 @@
             font-size: 14px;
         }
         
-        /* NEW: AI Insights Display */
-        #aiInsightsDisplay {
+        /* AI Display */
+        #aiInsightsDisplay, #aiMentorDisplay { 
             margin-top: 20px;
             color: white;
             background: rgba(0,0,0,0.1);
@@ -636,17 +773,9 @@
             line-height: 1.6;
         }
         
-        #aiInsightsDisplay strong {
-            color: #f093fb;
-        }
-        #aiInsightsDisplay ul {
-            margin-top: 10px;
-            margin-bottom: 10px;
-            padding-left: 20px;
-        }
-        #aiInsightsDisplay li {
-            margin-bottom: 5px;
-        }
+        #aiInsightsDisplay strong, #aiMentorDisplay strong { color: #f093fb; }
+        #aiInsightsDisplay ul, #aiMentorDisplay ul { margin-top: 10px; margin-bottom: 10px; padding-left: 20px; }
+        #aiInsightsDisplay li, #aiMentorDisplay li { margin-bottom: 5px; }
         
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.2);
@@ -657,98 +786,52 @@
             animation: spin 1s linear infinite;
             margin: 20px auto;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         /* Modal Styles */
         .modal-overlay {
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0;
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000; 
-            justify-content: center; 
-            align-items: center;
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8);
+            z-index: 1000; justify-content: center; align-items: center;
             animation: fadeIn 0.3s ease;
         }
-        .modal-overlay.show { 
-            display: flex; 
-        }
+        .modal-overlay.show { display: flex; }
         .modal-content {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px; 
-            padding: 40px; 
-            max-width: 400px; 
-            width: 90%;
-            text-align: center; 
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border-radius: 20px; padding: 30px; /* Adjusted padding */
+            max-width: 400px; width: 90%;
+            text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             animation: slideUp 0.4s ease;
         }
+         @media (min-width: 640px) {
+             .modal-content { padding: 40px; }
+         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
-        .modal-icon { 
-            font-size: 64px; 
-            margin-bottom: 20px; 
-            animation: bounce 1s ease infinite; 
-        }
+        .modal-icon { font-size: 50px; margin-bottom: 15px; animation: bounce 1s ease infinite; }
+         @media (min-width: 640px) { .modal-icon { font-size: 64px; margin-bottom: 20px; } }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .modal-title { 
-            color: white; 
-            font-size: 28px; 
-            font-weight: 600; 
-            margin-bottom: 15px; 
-        }
-        .modal-message { 
-            color: rgba(255, 255, 255, 0.9); 
-            font-size: 18px; 
-            margin-bottom: 30px; 
-            line-height: 1.5; 
-        }
+        .modal-title { color: white; font-size: 24px; font-weight: 600; margin-bottom: 15px; }
+         @media (min-width: 640px) { .modal-title { font-size: 28px; } }
+        .modal-message { color: rgba(255, 255, 255, 0.9); font-size: 16px; margin-bottom: 25px; line-height: 1.5; }
+         @media (min-width: 640px) { .modal-message { font-size: 18px; margin-bottom: 30px; } }
         
-        #sessionComment {
-            display: none; /* Hidden by default */
-            margin: -10px 0 20px 0;
-            height: 80px;
-            text-align: left;
-            font-size: 14px;
-            padding: 10px;
-            resize: vertical;
-            flex: none; /* Override common input style */
-        }
+        #sessionComment { display: none; /* Other styles applied via .setting-input */}
 
         .modal-btn {
-            width: 100%; 
-            padding: 18px; 
-            background: white; 
-            border: none;
-            border-radius: 12px; 
-            color: #667eea; 
-            font-size: 18px; 
-            font-weight: 700;
-            cursor: pointer; 
-            transition: all 0.3s; 
-            text-transform: uppercase; 
-            letter-spacing: 1px;
+            width: 100%; padding: 15px; /* Adjusted */
+            background: white; border: none;
+            border-radius: 12px; color: #667eea; font-size: 16px; /* Adjusted */
+            font-weight: 700; cursor: pointer; transition: all 0.3s; 
+            text-transform: uppercase; letter-spacing: 1px;
         }
-        .modal-btn:hover { 
-            transform: translateY(-2px); 
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); 
-        }
+         @media (min-width: 640px) { .modal-btn { padding: 18px; font-size: 18px; } }
+        .modal-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); }
         
-        /* Hide number input spinners for a cleaner look */
+        /* Hide number input spinners */
         input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button { 
-            -webkit-appearance: none;
-            margin: 0; 
-        }
-        input[type="number"] {
-            -moz-appearance: textfield; /* Firefox */
-        }
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
     </style>
 </head>
 <body>
@@ -776,8 +859,8 @@
 
         <!-- Timer Display -->
         <div class="display">
-            <svg class="progress-ring" width="180" height="180">
-                <circle cx="90" cy="90" r="90" id="progressCircle"></circle>
+            <svg class="progress-ring" viewBox="0 0 180 180"> <!-- Use viewBox for scaling -->
+                <circle id="progressCircle"></circle>
             </svg>
             <div class="time-display" id="display">25:00</div>
         </div>
@@ -808,7 +891,7 @@
             <div class="task-input-group">
                 <div class="input-group">
                     <input type="text" id="taskInput" class="task-input" placeholder="Enter a new task...">
-                    <input type="number" id="taskPoms" min="1" max="10" placeholder="Poms">
+                    <input type="number" id="taskPoms" min="1" max="10" class="setting-input" placeholder="Poms">
                     <button id="addTaskBtn" class="add-task-btn">Add</button>
                 </div>
             </div>
@@ -820,13 +903,13 @@
             </div>
         </div>
         
-        <!-- NEW: Tomorrow's Task Manager Panel -->
+        <!-- Tomorrow's Task Manager Panel -->
         <div class="task-manager" id="tomorrowTaskManager">
             <div class="panel-title">🗓️ Tomorrow's Tasks</div>
             <div class="task-input-group">
                 <div class="input-group">
                     <input type="text" id="taskInputTomorrow" class="task-input" placeholder="Plan a task for tomorrow...">
-                    <input type="number" id="taskPomsTomorrow" min="1" max="10" placeholder="Poms">
+                    <input type="number" id="taskPomsTomorrow" min="1" max="10" class="setting-input" placeholder="Poms">
                     <button id="addTaskTomorrowBtn" class="add-task-tomorrow-btn">Add</button>
                 </div>
             </div>
@@ -912,6 +995,11 @@
             <div class="chart-container">
                 <canvas id="historyTaskChart"></canvas>
             </div>
+            
+            <!-- Historical Line Chart Container -->
+            <div class="line-chart-container">
+                 <canvas id="historyCompletionLineChart"></canvas>
+            </div>
 
             <!-- Single Day Log Viewer -->
             <div class="panel-subtitle">Single Day Log</div>
@@ -973,6 +1061,19 @@
                 Click the button to get your insights!
             </div>
         </div>
+
+        <!-- AI Mentor Panel -->
+        <div class="ai-panel">
+            <div class="panel-title">🎓 AI Study Mentor</div>
+            <p style="color: rgba(255,255,255,0.8); text-align: center; font-size: 14px; margin-bottom: 15px;">
+                Your AI mentor analyzes your progress from the selected history range to offer personalized advice, content suggestions, and consistency tips.
+            </p>
+            <textarea id="mentorPrompt" class="setting-input" placeholder="Ask your mentor a specific question or add context (Optional)"></textarea> <!-- Added class -->
+            <button class="panel-btn" id="getMentorBtn">Get Mentorship Advice</button>
+            <div id="aiMentorDisplay">
+                Click the button to get mentorship advice!
+            </div>
+        </div>
     </div>
 
     <!-- Modal for phase completion -->
@@ -981,7 +1082,7 @@
             <div class="modal-icon" id="modalIcon">⏰</div>
             <div class="modal-title" id="modalTitle">Time's Up!</div>
             <div class="modal-message" id="modalMessage">Ready to continue?</div>
-            <textarea id="sessionComment" class="setting-input" placeholder="What did you accomplish in this session? (Optional)"></textarea>
+            <textarea id="sessionComment" class="setting-input" placeholder="What did you accomplish in this session? (Optional)"></textarea> <!-- Added class -->
             <button class="modal-btn" id="modalBtn">START NEXT PHASE</button>
         </div>
     </div>
@@ -1017,6 +1118,12 @@
         // AI Insights
         const getInsightsBtn = document.getElementById('getInsightsBtn');
         const aiInsightsDisplay = document.getElementById('aiInsightsDisplay');
+        
+        // NEW: AI Mentor Elements
+        const mentorPromptInput = document.getElementById('mentorPrompt');
+        const getMentorBtn = document.getElementById('getMentorBtn');
+        const aiMentorDisplay = document.getElementById('aiMentorDisplay');
+
         const apiKey = "AIzaSyBT9IN5PiyqaWBdM9NekDg5d-5fWDuhZnE"; // Per instruction, leave empty.
         
         // Modal comment box
@@ -1053,6 +1160,7 @@
         // Chart instances
         let taskChartInstance = null;
         let historyTaskChartInstance = null; 
+        let historyLineChartInstance = null; // NEW: Line chart instance
 
         // === Audio ===
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1143,10 +1251,10 @@
         // --- Timer Logic ---
         function updateTimer() { 
             timeRemaining--; 
+            updateDisplay(); 
             if (timeRemaining <= 0) { 
                 completePhase(); 
             } 
-            updateDisplay(); 
         }
 
         function completePhase() {
@@ -1187,9 +1295,17 @@
             const minutes = Math.floor(timeRemaining / 60);
             const seconds = timeRemaining % 60;
             document.getElementById('display').textContent = `${pad(minutes)}:${pad(seconds)}`;
-            const progress = 1 - (timeRemaining / totalTime);
-            const offset = 565 - (565 * progress);
-            document.getElementById('progressCircle').style.strokeDashoffset = offset;
+            
+            // Recalculate based on current SVG size
+            const circle = document.getElementById('progressCircle');
+            const radius = parseFloat(circle.getAttribute('r') || (circle.parentElement.getAttribute('width') / 2 - 4));
+            const circumference = 2 * Math.PI * radius;
+            const progress = totalTime > 0 ? 1 - (timeRemaining / totalTime) : 0; // Avoid division by zero
+            const offset = circumference - (circumference * progress);
+            
+            circle.style.strokeDasharray = circumference;
+            circle.style.strokeDashoffset = offset;
+            
             document.title = `${pad(minutes)}:${pad(seconds)} - ${currentMode === 'focus' ? 'Focus' : 'Break'} Time`;
         }
 
@@ -1287,8 +1403,8 @@
             const newFocus = parseInt(document.getElementById('focusTime').value);
             const newBreak = parseInt(document.getElementById('breakTime').value);
             const newSessions = parseInt(document.getElementById('sessionsPerCycle').value);
-            if (newFocus < 1 || newBreak < 1 || newSessions < 1) { 
-                alert('Please enter valid values (minimum 1)'); 
+            if (isNaN(newFocus) || isNaN(newBreak) || isNaN(newSessions) || newFocus < 1 || newBreak < 1 || newSessions < 1) { 
+                alert('Please enter valid numbers (minimum 1) for all settings.'); 
                 return; 
             }
             focusDuration = newFocus;
@@ -1331,7 +1447,7 @@
         function showPhaseCompleteModal(title, message, nextMode, showCommentBox = false) {
             const modal = document.getElementById('modalOverlay');
             modal.querySelector('#modalTitle').textContent = title;
-            modal.querySelector('#modalMessage').innerHTML = message;
+            modal.querySelector('#modalMessage').innerHTML = message; // Use innerHTML for bold tag
             modal.querySelector('#modalIcon').textContent = nextMode === 'focus' ? '🎯' : '☕';
             
             if (showCommentBox) {
@@ -1460,6 +1576,10 @@
             const poms = parseInt(taskPomsInput.value) || 1; 
             
             if (taskText) {
+                 if (isNaN(poms) || poms < 1 || poms > 10) {
+                     alert("Please enter a valid number of Pomodoros (1-10).");
+                     return;
+                 }
                 const newTask = {
                     id: Date.now().toString(),
                     text: taskText,
@@ -1482,6 +1602,10 @@
             const poms = parseInt(taskPomsTomorrow.value) || 1; 
             
             if (taskText) {
+                 if (isNaN(poms) || poms < 1 || poms > 10) {
+                     alert("Please enter a valid number of Pomodoros (1-10).");
+                     return;
+                 }
                 const newTask = {
                     id: Date.now().toString(),
                     text: taskText,
@@ -1574,6 +1698,10 @@
 
             } catch (e) {
                 console.error("Failed to save to localStorage: ", e);
+                 // Optionally alert the user if saving fails due to storage limits
+                 if (e.name === 'QuotaExceededError') {
+                    alert("Warning: Could not save data, local storage might be full. Please clear some history or export your logs.");
+                 }
             }
         }
 
@@ -1600,13 +1728,18 @@
                     const pendingTasksFromYesterday = JSON.parse(localStorage.getItem('pomodoro-pending-tasks') || '[]');
                     const yesterdaysLog = JSON.parse(localStorage.getItem(`pomodoro-log-${lastVisitedStr}`) || '{}');
                     
-                    // Archive yesterday's remaining tasks
-                    const archiveLog = {
-                        completed: yesterdaysLog.completed || [],
-                        incomplete: pendingTasksFromYesterday, 
-                        stats: yesterdaysLog.stats || { completedSessions: 0, totalFocusMinutes: 0 }
-                    };
-                    localStorage.setItem(`pomodoro-log-${lastVisitedStr}`, JSON.stringify(archiveLog));
+                    // Archive yesterday's remaining tasks only if there were tasks or sessions
+                    if (pendingTasksFromYesterday.length > 0 || (yesterdaysLog.completed && yesterdaysLog.completed.length > 0) || (yesterdaysLog.stats && yesterdaysLog.stats.completedSessions > 0)) {
+                         const archiveLog = {
+                            completed: yesterdaysLog.completed || [],
+                            incomplete: pendingTasksFromYesterday, 
+                            stats: yesterdaysLog.stats || { completedSessions: 0, totalFocusMinutes: 0 }
+                        };
+                        localStorage.setItem(`pomodoro-log-${lastVisitedStr}`, JSON.stringify(archiveLog));
+                        console.log(`Archived log for ${lastVisitedStr}:`, archiveLog);
+                    } else {
+                        console.log(`No significant activity on ${lastVisitedStr}, skipping archive.`);
+                    }
                     
                     // NEW: Load tomorrow's tasks and make them today's tasks
                     tasks = JSON.parse(localStorage.getItem('pomodoro-tasks-tomorrow') || '[]');
@@ -1650,6 +1783,7 @@
                 tasks = [];
                 completedToday = [];
                 tasksForTomorrow = [];
+                 alert("Error loading data from local storage. Your previous session might not be saved correctly.");
             }
 
             renderTasks();
@@ -1702,7 +1836,7 @@
             logContent += `- Total Focus Time: ${totalFocusMinutes} minutes\n`;
             logContent += `- Completed Sessions: ${completedSessions}\n`;
             
-            const blob = new Blob([logContent], { type: 'text/plain' });
+            const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' }); // Added charset
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -1767,7 +1901,7 @@
             logContent += `Weekly Total Sessions: ${totalPoms}\n`;
             logContent += `Weekly Total Focus Time: ${totalFocus} minutes\n`;
 
-            const blob = new Blob([logContent], { type: 'text/plain' });
+            const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' }); // Added charset
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -1845,12 +1979,13 @@
             let aggIncompleteTasks = [];
             
             let currentDate = new Date(startDateStr);
-            currentDate.setHours(0, 0, 0, 0); 
+            currentDate.setHours(12, 0, 0, 0); // Set time to noon to avoid DST issues
             const endDate = new Date(endDateStr);
-            endDate.setHours(0, 0, 0, 0);
+            endDate.setHours(12, 0, 0, 0);
 
             let dayCount = 0;
             const todayStrForLoop = getTodayDateString(); // Get today's date once
+            const endLoopDateStr = getTodayDateString(endDate);
 
             while (currentDate <= endDate) {
                 const dateStr = getTodayDateString(currentDate);
@@ -1871,24 +2006,80 @@
                     aggCompletedTasks.push(...(logData.completed || []));
                     
                     // Only the *last* day's incomplete tasks matter for the final "incomplete" count
-                    if (dateStr === getTodayDateString(endDate)) {
+                    if (dateStr === endLoopDateStr) {
                          aggIncompleteTasks = logData.incomplete || [];
                     }
                 }
                 currentDate.setDate(currentDate.getDate() + 1);
                 dayCount++;
-                if (dayCount > 365) break; 
+                if (dayCount > 365) break; // Safety break
             }
             
             return { aggFocus, aggSessions, aggCompletedTasks, aggIncompleteTasks };
         }
+        
+        // UPDATED: Function to get raw logs for mentor AND line chart
+        function getRawLogsForRange(startDateStr, endDateStr) {
+            const logs = [];
+            let currentDate = new Date(startDateStr);
+            currentDate.setHours(12, 0, 0, 0); 
+            const endDate = new Date(endDateStr);
+            endDate.setHours(12, 0, 0, 0);
+            let dayCount = 0;
+            const todayStrForLoop = getTodayDateString();
 
+            while (currentDate <= endDate) {
+                const dateStr = getTodayDateString(currentDate);
+                let logData = JSON.parse(localStorage.getItem(`pomodoro-log-${dateStr}`) || 'null');
+                let dayEntry;
+
+                 // Use live data for today
+                 if (dateStr === todayStrForLoop) {
+                    dayEntry = {
+                        date: dateStr,
+                        completed: completedToday,
+                        incomplete: tasks,
+                        stats: { completedSessions, totalFocusMinutes }
+                    };
+                 } else if (logData) {
+                     dayEntry = { ...logData, date: dateStr }; // Add date to the log object
+                 } else {
+                     // NEW: Create default entry for missing days
+                     dayEntry = {
+                         date: dateStr,
+                         completed: [],
+                         incomplete: [],
+                         stats: { completedSessions: 0, totalFocusMinutes: 0 }
+                     };
+                 }
+
+                logs.push(dayEntry); // Add log (or default if no data)
+                currentDate.setDate(currentDate.getDate() + 1);
+                dayCount++;
+                if (dayCount > 365) break; 
+            }
+            return logs;
+        }
+
+
+        // UPDATED: generateHistoricalStats to include line chart data
         function generateHistoricalStats() {
             const startDateStr = historyStartDateInput.value;
             const endDateStr = historyEndDateInput.value;
             
             if (!startDateStr || !endDateStr) {
                 historyStatsMessage.textContent = "Please select a start and end date.";
+                 // Clear charts if no dates
+                 updateHistoryChart(0, 0);
+                 updateHistoryLineChart([], []);
+                return;
+            }
+             // Validate dates
+            if (new Date(startDateStr) > new Date(endDateStr)) {
+                historyStatsMessage.textContent = "Start date cannot be after end date.";
+                // Clear charts on invalid range
+                updateHistoryChart(0, 0);
+                updateHistoryLineChart([], []);
                 return;
             }
             
@@ -1896,20 +2087,56 @@
             historyEndDate = endDateStr;
             saveStateToLocal();
             
-            const { aggFocus, aggSessions, aggCompletedTasks, aggIncompleteTasks } = getAggregatedData(startDateStr, endDateStr);
+            const rawLogs = getRawLogsForRange(startDateStr, endDateStr); // Get daily data
+            
+            // Calculate Aggregated Stats
+            let aggFocus = 0;
+            let aggSessions = 0;
+            let aggCompletedTasks = [];
+            let aggIncompleteTasks = []; // Only track incomplete for the *last* day for overall stats
+            
+            // NEW: Prepare data for line chart
+            const lineChartLabels = [];
+            const lineChartData = [];
 
-            // Calculate stats
+            rawLogs.forEach((log, index) => {
+                aggFocus += log.stats?.totalFocusMinutes || 0;
+                aggSessions += log.stats?.completedSessions || 0;
+                aggCompletedTasks.push(...(log.completed || []));
+                
+                // Only use the last day's incomplete for the aggregate doughnut chart
+                if (index === rawLogs.length - 1) {
+                     aggIncompleteTasks = log.incomplete || [];
+                }
+                
+                // Calculate daily completion % for line chart
+                const dailyCompleted = log.completed.length;
+                const dailyIncomplete = log.incomplete.length;
+                const dailyTotal = dailyCompleted + dailyIncomplete;
+                // Ensure calculation handles division by zero
+                const dailyCompletionPerc = dailyTotal === 0 ? 0 : Math.round((dailyCompleted / dailyTotal) * 100);
+                
+                lineChartLabels.push(log.date); // Use date as label
+                lineChartData.push(dailyCompletionPerc);
+            });
+
+
+            // Calculate overall stats
             const totalCompleted = aggCompletedTasks.length;
             const totalIncomplete = aggIncompleteTasks.length; 
-            const totalTasks = totalCompleted + totalIncomplete;
-            const completionPerc = totalTasks === 0 ? 0 : Math.round((totalCompleted / totalTasks) * 100);
+            // Calculate total tasks for % based on aggregate, not sum of daily totals
+            const totalTasksForPercentage = totalCompleted + totalIncomplete; 
+            const completionPerc = totalTasksForPercentage === 0 ? 0 : Math.round((totalCompleted / totalTasksForPercentage) * 100);
 
             const allAggTasks = [...aggCompletedTasks, ...aggIncompleteTasks];
             const pomsDone = allAggTasks.reduce((acc, task) => acc + (task.completedPoms || 0), 0);
             const pomsEst = allAggTasks.reduce((acc, task) => acc + (task.totalPoms || 0), 0);
+            
+            // Correctly count total unique tasks added across the period for the 'Total Tasks' stat
+            const totalUniqueTasksAdded = rawLogs.reduce((count, log) => count + log.completed.length + log.incomplete.length, 0);
 
             // Update DOM
-            if (totalTasks === 0 && aggSessions === 0) {
+            if (rawLogs.length === 0 || rawLogs.every(log => log.completed.length === 0 && log.incomplete.length === 0 && log.stats.completedSessions === 0)) {
                  historyStatsMessage.textContent = `No data found from ${startDateStr} to ${endDateStr}.`;
             } else {
                  historyStatsMessage.textContent = `Showing stats from ${startDateStr} to ${endDateStr}.`;
@@ -1918,12 +2145,14 @@
             document.getElementById('histStatFocusTime').textContent = `${aggFocus}m`;
             document.getElementById('histStatSessions').textContent = aggSessions;
             document.getElementById('histStatCompletion').textContent = `${completionPerc}%`;
-            document.getElementById('histStatTotalTasks').textContent = totalTasks;
+            document.getElementById('histStatTotalTasks').textContent = totalUniqueTasksAdded; // Use corrected count
             document.getElementById('histStatPomsDone').textContent = pomsDone;
             document.getElementById('histStatPomsEst').textContent = pomsEst;
 
-            // Update Chart
+            // Update Doughnut Chart
             updateHistoryChart(totalCompleted, totalIncomplete);
+            // NEW: Update Line Chart
+            updateHistoryLineChart(lineChartLabels, lineChartData);
         }
 
         function updateHistoryChart(completedCount, incompleteCount) {
@@ -1952,12 +2181,19 @@
                         maintainAspectRatio: false,
                         cutout: '70%',
                         plugins: {
+                            title: {
+                                display: true,
+                                text: 'Overall Task Status (End of Period)',
+                                color: 'white',
+                                font: { size: 14 },
+                                padding: { bottom: 10 } // Added padding
+                            },
                             legend: {
                                 position: 'bottom',
                                 labels: {
                                     color: 'white',
-                                    padding: 20,
-                                    font: { size: 14 }
+                                    padding: 15, // Adjusted padding
+                                    font: { size: 12 } // Adjusted size
                                 }
                             },
                             tooltip: {
@@ -1968,213 +2204,324 @@
                     }
                 });
             } catch (e) {
-                console.error("Error creating history chart: ", e);
+                console.error("Error creating history doughnut chart: ", e);
             }
         }
         
-        // --- AI Insight Functions ---
+        // NEW: Function to update the history line chart
+        function updateHistoryLineChart(labels, data) {
+            try {
+                 if (historyLineChartInstance) {
+                    historyLineChartInstance.destroy();
+                }
+                const ctx = document.getElementById('historyCompletionLineChart').getContext('2d');
+                historyLineChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels, // Dates
+                        datasets: [{
+                            label: 'Daily Completion %',
+                            data: data, // Percentages
+                            borderColor: 'rgba(240, 147, 251, 0.8)', // Focus color
+                            backgroundColor: 'rgba(240, 147, 251, 0.2)',
+                            tension: 0.1,
+                            fill: true,
+                            pointBackgroundColor: 'white',
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    callback: function(value) {
+                                        return value + '%'; // Add percentage sign
+                                    },
+                                    stepSize: 20 // Ensure scale isn't too granular
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    maxRotation: 45, // Rotate labels if they overlap
+                                    minRotation: 0,
+                                     // Auto skip ticks if too many labels
+                                     autoSkip: true,
+                                     maxTicksLimit: 10 // Limit ticks displayed
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        },
+                        plugins: {
+                             title: {
+                                display: true,
+                                text: 'Daily Task Completion Percentage Trend',
+                                color: 'white',
+                                font: { size: 14 },
+                                padding: { bottom: 15 }
+                            },
+                            legend: {
+                                display: false // Hide legend as there's only one dataset
+                            },
+                            tooltip: {
+                                titleFont: { size: 14 },
+                                bodyFont: { size: 12 },
+                                callbacks: {
+                                     label: function(context) {
+                                        return `Completion: ${context.parsed.y}%`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch(e) {
+                console.error("Error creating history line chart:", e);
+            }
+        }
         
-        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+        // --- Gemini AI Functions ---
+        
+        async function callGeminiAPI(payload) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            let response;
+            let retries = 3;
+            let delay = 1000;
+
             for (let i = 0; i < retries; i++) {
                 try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) {
+                        return await response.json();
                     }
-                    return await response.json();
+                    if (response.status === 429) {
+                        // Throttling
+                        console.log(`API throttled, retrying in ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2; 
+                    } else {
+                        // Other error
+                        throw new Error(`API request failed with status ${response.status}: ${await response.text()}`);
+                    }
                 } catch (error) {
-                    console.warn(`Attempt ${i + 1} failed. Retrying in ${delay}ms...`);
-                    if (i === retries - 1) throw error; 
-                    await new Promise(res => setTimeout(res, delay));
-                    delay *= 2; 
+                    console.error(`Attempt ${i+1} failed:`, error);
+                    if (i === retries - 1) {
+                        throw error;
+                    }
+                     console.log(`Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
                 }
             }
+             throw new Error("API request failed after multiple retries."); // Throw error if all retries fail
         }
-
-        function parseSimpleMarkdown(text) {
-            let html = text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
-                .replace(/\*(.*?)\*/g, '<em>$1</em>');     
-            
-            html = html.split('\n').map(line => {
-                if (line.startsWith('* ')) {
-                    return `<li>${line.substring(2)}</li>`;
-                }
-                return line;
-            }).join('\n');
-
-            html = html.replace(/<\/li>\n<li>/g, '</li><li>');   
-            html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>'); 
-            
-            html = html.split('\n').map(part => {
-                if (part.startsWith('<ul>') || part.startsWith('<li>')) return part;
-                return part.replace(/\n/g, '<br>');
-            }).join('\n');
-            
-            html = html.replace(/<br><ul>/g, '<ul>');
-            html = html.replace(/<\/ul><br>/g, '</ul>');
-            html = html.replace(/\n/g, '<br>');
-
-            return html;
+        
+        // Simple Markdown to HTML converter
+        function formatAIResponse(text) {
+             // Basic markdown to HTML
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>'); // Italics
+            // Handle lists more robustly
+            text = text.replace(/^(?:\*|-)\s(.*?)$/gm, '<li>$1</li>'); // Convert lines starting with * or - to li
+            text = text.replace(/<\/li>\s*<li>/g, '</li><li>'); // Join list items separated only by whitespace/newline
+            text = text.replace(/(<li>.*?<\/li>)/gs, (match) => { // Wrap consecutive li in ul
+                if (match.startsWith('<ul>')) return match; // Avoid double wrapping
+                return `<ul>${match}</ul>`;
+            }); 
+            text = text.replace(/<\/ul>\s*<ul>/g, ''); // Join adjacent ul tags
+            text = text.replace(/\n/g, '<br>'); // Convert remaining newlines to br
+            return text;
         }
 
         async function getAIInsights() {
             aiInsightsDisplay.innerHTML = '<div class="spinner"></div>';
-            getInsightsBtn.disabled = true;
-
-            try {
-                // 1. Get data from the selected date range
-                const { aggCompletedTasks, aggIncompleteTasks } = getAggregatedData(
-                    historyStartDateInput.value,
-                    historyEndDateInput.value
-                );
-                
-                const allTasks = [...aggCompletedTasks, ...aggIncompleteTasks];
-                if (allTasks.length === 0) {
-                    aiInsightsDisplay.innerHTML = "Not enough data to analyze. Please select a range with logged tasks.";
-                    getInsightsBtn.disabled = false;
-                    return;
-                }
-                
-                // 2. Format the data for the AI
-                const allComments = allTasks.flatMap(task => task.comments || []).filter(c => c);
-
-                const dataSummary = {
-                    completedTasks: aggCompletedTasks.map(task => task.text),
-                    incompleteTasks: aggIncompleteTasks.map(task => task.text),
-                    sessionComments: allComments, 
-                    totalPomodorosCompleted: allTasks.reduce((acc, task) => acc + (task.completedPoms || 0), 0),
-                    totalPomodorosEstimated: allTasks.reduce((acc, task) => acc + (task.totalPoms || 0), 0),
-                    totalFocusSessions: allTasks.reduce((acc, task) => acc + (task.completedPoms || 0), 0)
-                };
-
-                // 3. Define Prompts
-                const systemPrompt = "You are a friendly, encouraging, and sharp-eyed study coach. Your goal is to analyze a student's task list and session comments from their Pomodoro timer app, identify their main topics of study, and provide actionable insights. Use Google Search to understand *what* the topics are (e.g., 'Andrej Karpathy AI course' is a deep learning topic). Keep your response concise, friendly, and formatted in basic Markdown (use **bold**, *italics*, and `*` for lists). Do not use headers.";
-
-                const userQuery = `Here is my study data for the period: ${JSON.stringify(dataSummary)}. 
-                
-Please analyze my focus areas (like 'Andrej Karpathy AI course' which you should identify as an AI topic), note my most common topics, and give me one or two actionable insights or suggestions based on my task list AND my session comments. The comments show what I learned or struggled with.`;
-                
-                // 4. Construct API Payload
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                const payload = {
-                    contents: [{ "parts": [{ "text": userQuery }] }],
-                    systemInstruction: { "parts": [{ "text": systemPrompt }] },
-                    tools: [{ "google_search": {} }] // Use Google Search
-                };
-
-                // 5. Fetch with retry
-                const result = await fetchWithRetry(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                // 6. Display result
-                const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (aiText) {
-                    aiInsightsDisplay.innerHTML = parseSimpleMarkdown(aiText);
-                } else {
-                    throw new Error("No content in AI response.");
-                }
-
-            } catch (error) {
-                console.error("Error getting AI insights: ", error);
-                aiInsightsDisplay.innerHTML = "Sorry, I couldn't get insights right now. Please check the console and try again.";
-            } finally {
-                getInsightsBtn.disabled = false;
-            }
-        }
-
-
-        // --- Event Listeners ---
-        document.getElementById('startBtn').addEventListener('click', start);
-        document.getElementById('stopBtn').addEventListener('click', stop);
-        document.getElementById('resetBtn').addEventListener('click', reset);
-        document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
-        document.getElementById('saveBtn').addEventListener('click', saveSettings);
-        
-        // Task Listeners
-        addTaskBtn.addEventListener('click', addTask);
-        taskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
-        taskPomsInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
-        
-        taskList.addEventListener('click', (e) => {
-            const targetBtn = e.target.closest('button');
-            if (!targetBtn) return;
             
-            const taskId = targetBtn.dataset.id;
+            const startDateStr = historyStartDateInput.value;
+            const endDateStr = historyEndDateInput.value;
             
-            if (targetBtn.classList.contains('delete-task-btn')) {
-                deleteTask(taskId);
-            } else if (targetBtn.classList.contains('postpone-task-btn')) {
-                postponeTask(taskId);
-            } else if (targetBtn.classList.contains('duplicate-task-btn')) {
-                duplicateTask(taskId);
-            }
-        });
-        
-        // NEW: Tomorrow's Task Listeners
-        addTaskTomorrowBtn.addEventListener('click', addTaskForTomorrow);
-        taskInputTomorrow.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTaskForTomorrow(); });
-        taskPomsTomorrow.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTaskForTomorrow(); });
-        
-        taskListTomorrow.addEventListener('click', (e) => {
-            const targetBtn = e.target.closest('button');
-            if (targetBtn && targetBtn.classList.contains('delete-tomorrow-task-btn')) {
-                deleteTaskForTomorrow(targetBtn.dataset.id);
-            }
-        });
-        
-        
-        // History Listeners
-        downloadLogBtn.addEventListener('click', generateAndDownloadLog);
-        downloadWeeklyLogBtn.addEventListener('click', generateAndDownloadWeeklyLog);
-        viewHistoryBtn.addEventListener('click', viewHistory);
-
-        // Historical Stats Listeners
-        historyStartDateInput.addEventListener('change', generateHistoricalStats);
-        historyEndDateInput.addEventListener('change', generateHistoricalStats);
-        
-        // AI Insight Listener
-        getInsightsBtn.addEventListener('click', getAIInsights);
-
-        // --- Keyboard shortcuts ---
-        document.addEventListener('keydown', (e) => {
-            // NEW: Ignore shortcuts if typing in any input
-            if (['taskInput', 'taskPomsInput', 'sessionCommentInput', 'taskInputTomorrow', 'taskPomsTomorrow'].includes(document.activeElement.id)) {
+            const { aggCompletedTasks, aggIncompleteTasks } = getAggregatedData(startDateStr, endDateStr);
+            
+            if (aggCompletedTasks.length === 0 && aggIncompleteTasks.length === 0) {
+                aiInsightsDisplay.innerHTML = "Not enough data in the selected range to generate insights. Complete some tasks first!";
                 return;
             }
             
-            if (e.code === 'Space') { e.preventDefault(); isRunning ? stop() : start(); } 
-            else if (e.code === 'KeyR') { reset(); } 
-            else if (e.code === 'KeyS') { toggleSettings(); }
-        });
+            // Prepare data for AI
+            let completedData = aggCompletedTasks.map(t => `- Task: "${t.text}" (Est: ${t.totalPoms}, Done: ${t.completedPoms})\n  Comments: ${t.comments && t.comments.length > 0 ? t.comments.join('; ') : 'None'}`).join('\n');
+            let incompleteData = aggIncompleteTasks.map(t => `- Task: "${t.text}" (Est: ${t.totalPoms}, Done: ${t.completedPoms})\n  Comments: ${t.comments && t.comments.length > 0 ? t.comments.join('; ') : 'None'}`).join('\n');
+            
+            const userQuery = `
+Here is my study and task data for the period ${startDateStr} to ${endDateStr}.
+Please act as a helpful and encouraging productivity coach.
+Analyze my completed tasks, incomplete tasks, and my personal comments to give me insights.
 
-        // Handle tab visibility change
-        document.addEventListener('visibilitychange', () => { if (!document.hidden && isRunning) requestWakeLock(); });
-        let keepAliveInterval = setInterval(() => { if (isRunning) document.title = document.title; }, 1000);
+My Completed Tasks:
+${completedData || "None"}
+
+My Incomplete Tasks (at the end of the period):
+${incompleteData || "None"}
+
+Based on this data, provide:
+1.  **A brief, positive summary** of my productivity.
+2.  **Key Themes:** What topics am I focusing on? (e.g., "AI", "math", "writing"). Use Google Search to understand what tasks like "Andrej Karpathy AI course" mean.
+3.  **Actionable Insights:** Are there any patterns? (e.g., "You seem to finish 1-pomodoro tasks, but struggle with 3-pomodoro tasks.")
+4.  **One or two specific suggestions** for me to improve.
+
+Format the response in simple Markdown (bold, lists). Keep the response concise.
+`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: "You are a friendly and encouraging productivity coach. Your goal is to help the user understand their study habits and provide positive, actionable feedback. Use simple markdown for formatting (bold, italics, lists). Keep the response concise." }]
+                },
+            };
+
+            try {
+                const result = await callGeminiAPI(payload);
+                const candidate = result?.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    aiInsightsDisplay.innerHTML = formatAIResponse(candidate.content.parts[0].text);
+                } else {
+                     console.error("Invalid AI response structure:", result);
+                    aiInsightsDisplay.innerHTML = "Sorry, I couldn't get a valid response from the AI. Please try again.";
+                }
+            } catch (error) {
+                console.error("Error getting AI insights:", error);
+                aiInsightsDisplay.innerHTML = `An error occurred while fetching insights: ${error.message}. Check the console for details.`;
+            }
+        }
+        
+        // NEW: getAIMentorAdvice
+        async function getAIMentorAdvice() {
+            aiMentorDisplay.innerHTML = '<div class="spinner"></div>';
+
+            const startDateStr = historyStartDateInput.value;
+            const endDateStr = historyEndDateInput.value;
+            const userPrompt = mentorPromptInput.value.trim();
+
+            const rawLogs = getRawLogsForRange(startDateStr, endDateStr);
+            // Filter out days where absolutely nothing happened
+            const validLogs = rawLogs.filter(log => log.completed.length > 0 || log.incomplete.length > 0 || log.stats.completedSessions > 0); 
+
+            if (validLogs.length === 0) {
+                aiMentorDisplay.innerHTML = "Not enough data in the selected range for mentorship. Complete some tasks over a few days first!";
+                return;
+            }
+
+            // Prepare data for the mentor prompt
+            let logSummary = validLogs.map(log => {
+                let daySummary = `Date: ${log.date}\n`;
+                daySummary += `  Completed Tasks (${log.completed.length}):\n`;
+                log.completed.forEach(t => {
+                    daySummary += `    - "${t.text}" (${t.completedPoms}/${t.totalPoms} Poms). Comments: ${t.comments && t.comments.length > 0 ? t.comments.join('; ') : 'None'}\n`;
+                });
+                 daySummary += `  Incomplete Tasks (${log.incomplete.length}):\n`;
+                 log.incomplete.forEach(t => {
+                    daySummary += `    - "${t.text}" (${t.completedPoms}/${t.totalPoms} Poms). Comments: ${t.comments && t.comments.length > 0 ? t.comments.join('; ') : 'None'}\n`;
+                });
+                daySummary += `  Stats: ${log.stats.completedSessions} sessions, ${log.stats.totalFocusMinutes} min focus.\n`;
+                return daySummary;
+            }).join('\n');
+
+
+            const mentorQuery = `
+You are an insightful and supportive study mentor reviewing my Pomodoro timer data from ${startDateStr} to ${endDateStr}.
+Analyze my study patterns day-by-day based on the provided logs.
+
+Here are my daily logs:
+${logSummary}
+
+${userPrompt ? `\nMy specific question/focus for you is: "${userPrompt}"\n` : ''}
+
+Based *only* on the data provided:
+1.  **Identify recurring themes** in my tasks (e.g., subjects, types of work). Use Google Search to understand task topics like "Andrej Karpathy AI course".
+2.  **Assess my consistency** over this period. Are there days I'm more or less productive? Do I finish what I start? Look at completion rates and comments.
+3.  **Provide specific, actionable advice** like a mentor would:
+    * If strong themes emerge, suggest **related content** (specific videos, blog posts, concepts to explore next) using Google Search. Be specific with recommendations if possible (e.g., "Check out the 'Attention is All You Need' paper related to your transformer studies").
+    * If consistency is an issue (e.g., many incomplete tasks, dips in sessions), suggest **concrete strategies** (e.g., "Try breaking down larger tasks further," "Schedule specific times for your Pomodoro sessions").
+    * Offer encouragement and positive reinforcement based on my progress and comments.
+4.  ${userPrompt ? 'Address my specific question or focus.' : 'Focus on general patterns and suggestions.'}
+
+Keep the tone supportive and constructive. Format the response using simple Markdown (bold, lists). Be detailed but easy to read.
+`;
+
+            const payload = {
+                contents: [{ parts: [{ text: mentorQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: "You are an insightful and supportive study mentor. Analyze daily Pomodoro logs (tasks, comments, stats) to identify themes, assess consistency, and provide specific, actionable advice, including content recommendations (using search) and strategies for improvement. Be encouraging, constructive, and detailed. Use simple markdown." }]
+                },
+            };
+             
+            try {
+                const result = await callGeminiAPI(payload);
+                const candidate = result?.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                     aiMentorDisplay.innerHTML = formatAIResponse(candidate.content.parts[0].text);
+                } else {
+                    console.error("Invalid AI Mentor response structure:", result);
+                    aiMentorDisplay.innerHTML = "Sorry, I couldn't get a valid mentorship response. Please try again.";
+                }
+            } catch (error) {
+                console.error("Error getting AI mentor advice:", error);
+                 aiMentorDisplay.innerHTML = `An error occurred while fetching mentorship advice: ${error.message}. Check the console for details.`;
+            }
+
+        }
+
         
         // --- Drag and Drop ---
-        let dragStartId;
-        
+        let dragStartIndex;
+
         function dragStart(e) {
             const taskItem = e.target.closest('.task-item');
-            if (taskItem && !taskItem.classList.contains('completed')) {
-                // Prevent drag if clicking a button
-                if (e.target.closest('.task-btn')) {
-                    e.preventDefault(); 
-                    return;
-                }
-                dragStartId = taskItem.dataset.id; 
-                taskItem.classList.add('dragging'); 
-            } else {
+            if (!taskItem || taskItem.classList.contains('completed')) {
                 e.preventDefault();
+                return;
+            }
+            dragStartIndex = +taskItem.dataset.id;
+            // Use setTimeout to allow the browser to render the drag image before adding class
+             setTimeout(() => e.target.classList.add('dragging'), 0);
+        }
+        
+        function dragOver(e) {
+            e.preventDefault();
+            const draggingItem = taskList.querySelector('.dragging');
+            if (!draggingItem) return;
+
+            const afterElement = getDragAfterElement(taskList, e.clientY);
+            const currentItem = document.querySelector('.dragging');
+            
+            if (afterElement == null) {
+                taskList.appendChild(currentItem);
+            } else {
+                taskList.insertBefore(currentItem, afterElement);
             }
         }
         
         function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.task-item:not(.completed):not(.dragging)')];
+            const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging):not(.completed)')]; // Only consider reorderable items
+
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
@@ -2185,61 +2532,145 @@ Please analyze my focus areas (like 'Andrej Karpathy AI course' which you should
                 }
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
-        
-        function dragOver(e) {
-            e.preventDefault(); 
-            const draggingItem = document.querySelector('.dragging');
-            if (!draggingItem) return;
 
-            const afterElement = getDragAfterElement(taskList, e.clientY);
-            if (afterElement == null) {
-                const firstCompleted = taskList.querySelector('.task-item.completed');
-                if (firstCompleted) {
-                    taskList.insertBefore(draggingItem, firstCompleted);
-                } else {
-                    taskList.appendChild(draggingItem);
-                }
-            } else {
-                taskList.insertBefore(draggingItem, afterElement);
-            }
-        }
 
         function drop(e) {
-            const draggingItem = taskList.querySelector('.dragging');
-            if (draggingItem) {
-                draggingItem.classList.remove('dragging');
+             e.preventDefault(); // Prevent default drop behavior
+            const dragEndItem = taskList.querySelector('.dragging');
+            if (!dragEndItem) return; 
+
+            const dragEndId = +dragEndItem.dataset.id; 
+            
+            // Determine the new index based on final position
+            const children = Array.from(taskList.querySelectorAll('.task-item:not(.completed)'));
+            const newIndex = children.findIndex(item => item === dragEndItem);
+            
+            // Update the actual tasks array order
+            const movedItemIndex = tasks.findIndex(t => t.id === dragEndId.toString());
+            if (movedItemIndex > -1 && newIndex > -1) {
+                const [movedItem] = tasks.splice(movedItemIndex, 1);
+                tasks.splice(newIndex, 0, movedItem);
                 
-                const newIdOrder = [...taskList.querySelectorAll('.task-item:not(.completed)')]
-                                    .map(li => li.dataset.id);
-                
-                tasks.sort((a, b) => newIdOrder.indexOf(a.id) - newIdOrder.indexOf(b.id));
-                
-                renderTasks(); 
+                // Save and re-render to confirm order and update dataset.id if needed
                 saveStateToLocal();
+                renderTasks(); 
+            } else {
+                 console.error("Could not find dragged item or target index.");
+                 renderTasks(); // Re-render to reset any visual glitches
             }
+            dragEndItem.classList.remove('dragging'); 
         }
         
+        function dragEnd(e) {
+            // Find any item still marked as dragging and remove the class
+             const draggingItem = taskList.querySelector('.dragging');
+             if (draggingItem) {
+                 draggingItem.classList.remove('dragging');
+             }
+        }
+        
+
+        // === Event Listeners ===
+        
+        // Timer
+        document.getElementById('startBtn').addEventListener('click', start);
+        document.getElementById('stopBtn').addEventListener('click', stop);
+        document.getElementById('resetBtn').addEventListener('click', reset);
+        document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
+        document.getElementById('saveBtn').addEventListener('click', saveSettings);
+        
+        // Task List (Today)
+        addTaskBtn.addEventListener('click', addTask);
+        taskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+        
+        taskList.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+            
+            const id = target.dataset.id;
+            if (target.classList.contains('delete-task-btn')) {
+                deleteTask(id);
+            }
+            if (target.classList.contains('postpone-task-btn')) {
+                postponeTask(id);
+            }
+            if (target.classList.contains('duplicate-task-btn')) {
+                duplicateTask(id);
+            }
+        });
+        
+        // Task List (Tomorrow)
+        addTaskTomorrowBtn.addEventListener('click', addTaskForTomorrow);
+        taskInputTomorrow.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTaskForTomorrow(); });
+        
+        taskListTomorrow.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (target && target.classList.contains('delete-tomorrow-task-btn')) {
+                deleteTaskForTomorrow(target.dataset.id);
+            }
+        });
+
+        // Drag and Drop listeners on the container
         taskList.addEventListener('dragstart', dragStart);
         taskList.addEventListener('dragover', dragOver);
         taskList.addEventListener('drop', drop);
-        taskList.addEventListener('dragend', () => {
-             const draggingItem = taskList.querySelector('.dragging');
-            if (draggingItem) {
-                draggingItem.classList.remove('dragging');
+        taskList.addEventListener('dragend', dragEnd); // Add dragend listener
+        
+        // History / Logs
+        downloadLogBtn.addEventListener('click', generateAndDownloadLog);
+        downloadWeeklyLogBtn.addEventListener('click', generateAndDownloadWeeklyLog);
+        viewHistoryBtn.addEventListener('click', viewHistory);
+        historyStartDateInput.addEventListener('change', generateHistoricalStats);
+        historyEndDateInput.addEventListener('change', generateHistoricalStats);
+        
+        // AI Listeners
+        getInsightsBtn.addEventListener('click', getAIInsights);
+        getMentorBtn.addEventListener('click', getAIMentorAdvice); // NEW
+
+        // --- Keyboard shortcuts ---
+        document.addEventListener('keydown', (e) => {
+            // NEW: Ignore shortcuts if typing in any input
+            // FIX: Using correct element IDs instead of variable names
+            const ignoreInputs = [
+                'taskInput', 'taskPoms', 'sessionComment', 
+                'taskInputTomorrow', 'taskPomsTomorrow',
+                'historyDate', 'historyStartDate', 'historyEndDate',
+                'mentorPrompt' // Added mentor prompt
+            ];
+            
+            if (ignoreInputs.includes(document.activeElement?.id)) { // Added safe navigation
+                return;
+            }
+            
+            if (e.code === 'Space') { 
+                e.preventDefault(); 
+                isRunning ? stop() : start(); 
+            } else if (e.code === 'KeyR') { 
+                reset(); 
+            } else if (e.code === 'KeyS') { 
+                toggleSettings(); 
             }
         });
 
 
-        // --- Initialize App ---
-        function init() {
-            loadStateFromLocal(); 
-            reset(); 
-            generateHistoricalStats(); // Load default history stats on startup
+        // Handle tab visibility change
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && isRunning) requestWakeLock(); });
+        
+        // Keep-alive to prevent tab throttling
+        let keepAliveInterval = setInterval(() => { if (isRunning) document.title = document.title; }, 1000);
+        
+        // === Initialization ===
+        function initializeApp() {
+            loadStateFromLocal();
+            reset(); // Set initial timer display
+            updateTodayStats(); // Initial chart render
+            generateHistoricalStats(); // Initial historical render
         }
+        
+        // Wait for fonts/etc. to be ready
+        window.onload = initializeApp;
 
-        init();
     </script>
 </body>
 </html>
-
 
