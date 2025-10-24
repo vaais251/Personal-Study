@@ -6,6 +6,8 @@
     <title>Pomodoro Study Timer</title>
     <!-- NEW: Added a dynamic SVG favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><circle cx=%2750%27 cy=%2750%27 r=%2745%27 fill=%27%23f5576c%27/><circle cx=%2750%27 cy=%2750%27 r=%2730%27 fill=%27white%27/><circle cx=%2750%27 cy=%2750%27 r=%2715%27 fill=%27%23f5576c%27/></svg>">
+    <!-- NEW: Added Chart.js for stats -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -22,6 +24,8 @@
             align-items: center;
             overflow-y: auto; /* Allow scrolling for more content */
             padding: 20px 0;
+            /* GUI UPDATE: Smooth background transitions */
+            transition: background 1s ease;
         }
 
         .container {
@@ -247,7 +251,7 @@
         }
 
         /* Common panel style */
-        .settings-panel, .task-manager, .history-panel {
+        .settings-panel, .task-manager, .history-panel, .ai-panel { /* NEW: AI Panel */
             background: rgba(255, 255, 255, 0.15);
             border-radius: 15px;
             padding: 25px;
@@ -265,6 +269,18 @@
             font-weight: 600;
             margin-bottom: 20px;
             text-align: center;
+        }
+        
+        /* NEW: Sub-panel title for history */
+        .panel-subtitle {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 20px;
+            margin-top: 25px;
         }
 
         .setting-group, .task-input-group, .history-input-group {
@@ -285,7 +301,8 @@
         }
 
         /* Common input style */
-        .setting-input, .task-input, #historyDate {
+        .setting-input, .task-input, #historyDate, #taskPoms,
+        #historyStartDate, #historyEndDate, #sessionComment { /* NEW: sessionComment */
             flex: 1;
             padding: 12px;
             background: rgba(255, 255, 255, 0.2);
@@ -295,14 +312,35 @@
             font-size: 16px;
         }
         
+        /* Set white color scheme for date picker */
+        input[type="date"] {
+            color-scheme: dark;
+        }
+        
         .task-input { text-align: left; }
-        .setting-input { text-align: center; }
+        .setting-input, #taskPoms { text-align: center; }
 
-        .setting-input::placeholder, .task-input::placeholder {
+        /* NEW: Style for Pomodoro input */
+        #taskPoms {
+            flex: 0 1 90px; /* Don't grow, basis of 90px */
+            -moz-appearance: textfield;
+        }
+        #taskPoms::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        #taskPoms::-webkit-inner-spin-button,
+        #taskPoms::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+
+        .setting-input::placeholder, .task-input::placeholder, #sessionComment::placeholder {
             color: rgba(255, 255, 255, 0.6);
         }
 
-        .setting-input:focus, .task-input:focus, #historyDate:focus {
+        .setting-input:focus, .task-input:focus, #historyDate:focus, #taskPoms:focus,
+        #historyStartDate:focus, #historyEndDate:focus, #sessionComment:focus { /* NEW: sessionComment */
             outline: none;
             background: rgba(255, 255, 255, 0.3);
             border-color: rgba(255, 255, 255, 0.5);
@@ -333,6 +371,11 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(58, 123, 213, 0.5);
         }
+        
+        /* NEW: AI Insights button style */
+        #getInsightsBtn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
 
         .add-task-btn { /* Specific for small buttons next to inputs */
             padding: 12px 20px;
@@ -352,8 +395,17 @@
         #taskList {
             list-style: none;
             padding: 0;
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
+            overflow-x: hidden; /* Fixes hover scrollbar issue */
+        }
+
+        /* NEW: Empty state message */
+        #taskEmptyState {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 20px 0;
+            display: none; /* Hidden by default */
         }
 
         .task-item {
@@ -366,15 +418,42 @@
             margin-bottom: 8px;
             color: white;
             cursor: grab;
-            transition: background 0.3s;
+            /* GUI UPDATE: Transition for hover */
+            transition: all 0.2s ease-out;
         }
         .task-item:last-child { margin-bottom: 0; }
         .task-item.dragging { opacity: 0.5; background: rgba(255,255,255,0.3); }
 
-        .task-item-text {
+        /* GUI UPDATE: Hover effect */
+        .task-item:not(.completed):hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* NEW: Flex container for text and pom count */
+        .task-item-details {
+            display: flex;
+            align-items: center;
             flex-grow: 1;
             margin-left: 10px;
-            word-break: break-word; /* Ensure long tasks wrap */
+            word-break: break-word; /* Wrap long text */
+        }
+
+        .task-item-text {
+            /* flex-grow: 1; (removed, parent has it) */
+            /* margin-left: 10px; (removed, parent has it) */
+        }
+
+        /* NEW: Pomodoro count badge */
+        .task-pom-count {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            padding: 2px 6px;
+            font-size: 12px;
+            margin-left: auto; /* Pushes it to the right */
+            margin-right: 10px;
+            flex-shrink: 0; /* Prevent shrinking */
         }
         
         .task-handle {
@@ -391,12 +470,13 @@
             font-size: 20px;
             padding: 0 5px;
             transition: color 0.3s;
+            flex-shrink: 0; /* Prevent shrinking */
         }
         .delete-task-btn:hover {
             color: #f857a6;
         }
         
-        /* NEW: Style for completed tasks */
+        /* Style for completed tasks */
         .task-item.completed {
             background: rgba(255, 255, 255, 0.05);
             color: rgba(255, 255, 255, 0.5);
@@ -405,6 +485,10 @@
 
         .task-item.completed .task-item-text {
             text-decoration: line-through;
+        }
+        
+        .task-item.completed .task-pom-count {
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .task-item.completed .task-handle,
@@ -424,6 +508,18 @@
         #historyDisplay h4 { margin-bottom: 10px; }
         #historyDisplay ul { list-style-position: inside; padding-left: 10px; }
         #historyDisplay li { margin-bottom: 5px; }
+        /* NEW: Style for comments in history */
+        #historyDisplay .comment-list {
+            list-style-type: square;
+            margin-left: 20px;
+            margin-top: 5px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        #historyDisplay .comment-list li {
+            font-style: italic;
+            font-size: 14px;
+        }
+
 
         /* Stats panel */
         .stats {
@@ -441,9 +537,10 @@
             text-align: center;
         }
 
+        /* NEW: Updated grid to 3 columns */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 15px;
         }
 
@@ -464,6 +561,59 @@
             color: white;
             font-size: 24px;
             font-weight: 600;
+        }
+        
+        /* NEW: Chart container */
+        .chart-container {
+            margin-top: 25px;
+            position: relative;
+            height: 200px; /* Give canvas a set height */
+        }
+        
+        /* NEW: History Stats Message */
+        #historyStatsMessage {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        /* NEW: AI Insights Display */
+        #aiInsightsDisplay {
+            margin-top: 20px;
+            color: white;
+            background: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 100px;
+            line-height: 1.6;
+        }
+        
+        #aiInsightsDisplay strong {
+            color: #f093fb;
+        }
+        #aiInsightsDisplay ul {
+            margin-top: 10px;
+            margin-bottom: 10px;
+            padding-left: 20px;
+        }
+        #aiInsightsDisplay li {
+            margin-bottom: 5px;
+        }
+        
+        /* NEW: Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-left-color: #f093fb;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         /* Modal Styles */
@@ -513,6 +663,19 @@
             margin-bottom: 30px; 
             line-height: 1.5; 
         }
+        
+        /* NEW: Style for comment box in modal */
+        #sessionComment {
+            display: none; /* Hidden by default */
+            margin: -10px 0 20px 0;
+            height: 80px;
+            text-align: left;
+            font-size: 14px;
+            padding: 10px;
+            resize: vertical;
+            flex: none; /* Override common input style */
+        }
+
         .modal-btn {
             width: 100%; 
             padding: 18px; 
@@ -600,12 +763,18 @@
             <div class="task-input-group">
                 <div class="input-group">
                     <input type="text" id="taskInput" class="task-input" placeholder="Enter a new task...">
+                    <!-- NEW: Pomodoro Estimate Input -->
+                    <input type="number" id="taskPoms" min="1" max="10" placeholder="Poms">
                     <button id="addTaskBtn" class="add-task-btn">Add</button>
                 </div>
             </div>
             <ul id="taskList">
                 <!-- Tasks will be dynamically added here -->
             </ul>
+            <!-- NEW: Empty State Message -->
+            <div id="taskEmptyState">
+                All done! Add a new task to get started.
+            </div>
         </div>
         
         <!-- Timer Settings Panel -->
@@ -635,9 +804,56 @@
             <button class="panel-btn" id="saveBtn">💾 Save Settings</button>
         </div>
         
-        <!-- NEW: History & Data Panel -->
+        <!-- UPDATED: History & Data Panel -->
         <div class="history-panel" id="historyPanel">
             <div class="panel-title">📜 Task History</div>
+
+            <!-- NEW: Historical Progress Section -->
+            <div class="panel-subtitle" style="margin-top: 0; border-top: none; padding-top: 0;">Historical Progress</div>
+            <div class="history-input-group">
+                <div class="input-group">
+                    <input type="date" id="historyStartDate" class="setting-input">
+                    <span style="color: white;">to</span>
+                    <input type="date" id="historyEndDate" class="setting-input">
+                </div>
+            </div>
+            <div id="historyStatsMessage"></div>
+            
+            <!-- NEW: Historical Stats Grid -->
+            <div class="stats-grid" style="margin-top: 20px;">
+                <div class="stat-item">
+                    <div class="stat-label">Focus Time</div>
+                    <div class="stat-value" id="histStatFocusTime">0m</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Sessions Done</div>
+                    <div class="stat-value" id="histStatSessions">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Completion %</div>
+                    <div class="stat-value" id="histStatCompletion">0%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Tasks</div>
+                    <div class="stat-value" id="histStatTotalTasks">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Poms Done</div>
+                    <div class="stat-value" id="histStatPomsDone">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Poms Estimated</div>
+                    <div class="stat-value" id="histStatPomsEst">0</div>
+                </div>
+            </div>
+            
+            <!-- NEW: Historical Chart Container -->
+            <div class="chart-container">
+                <canvas id="historyTaskChart"></canvas>
+            </div>
+
+            <!-- Existing Single Day Log Viewer -->
+            <div class="panel-subtitle">Single Day Log</div>
             <div class="history-input-group">
                 <label class="setting-label">View Log for a Specific Day</label>
                 <div class="input-group">
@@ -646,12 +862,15 @@
                 </div>
                 <div id="historyDisplay"></div>
             </div>
+            
             <button class="panel-btn" id="downloadLogBtn">📄 Download Today's Log</button>
+            <button class="panel-btn" id="downloadWeeklyLogBtn" style="background: linear-gradient(135deg, #ffd89b 0%, #ffaa00 100%); margin-top: 15px;">🗓️ Download Weekly Summary</button>
         </div>
 
         <!-- Today's Stats Panel -->
         <div class="stats">
             <div class="stats-title">📊 Today's Progress</div>
+            <!-- NEW: Updated stats grid -->
             <div class="stats-grid">
                 <div class="stat-item">
                     <div class="stat-label">Focus Time</div>
@@ -661,6 +880,38 @@
                     <div class="stat-label">Sessions Done</div>
                     <div class="stat-value" id="totalSessions">0</div>
                 </div>
+                <div class="stat-item">
+                    <div class="stat-label">Completion %</div>
+                    <div class="stat-value" id="statCompletion">0%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Tasks</div>
+                    <div class="stat-value" id="statTotalTasks">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Poms Done</div>
+                    <div class="stat-value" id="statPomsDone">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Poms Estimated</div>
+                    <div class="stat-value" id="statPomsEst">0</div>
+                </div>
+            </div>
+            <!-- NEW: Chart container -->
+            <div class="chart-container">
+                <canvas id="taskChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- NEW: AI Insights Panel -->
+        <div class="ai-panel">
+            <div class="panel-title">🤖 AI Study Insights</div>
+            <p style="color: rgba(255,255,255,0.8); text-align: center; font-size: 14px; margin-bottom: 20px;">
+                Get AI-powered insights on your study habits based on the dates selected in the "Historical Progress" panel.
+            </p>
+            <button class="panel-btn" id="getInsightsBtn">Get AI Insights for Selected Range</button>
+            <div id="aiInsightsDisplay">
+                Click the button to get your insights!
             </div>
         </div>
     </div>
@@ -671,26 +922,46 @@
             <div class="modal-icon" id="modalIcon">⏰</div>
             <div class="modal-title" id="modalTitle">Time's Up!</div>
             <div class="modal-message" id="modalMessage">Ready to continue?</div>
+            <!-- NEW: Comment box for focus sessions -->
+            <textarea id="sessionComment" class="setting-input" placeholder="What did you accomplish in this session? (Optional)"></textarea>
             <button class="modal-btn" id="modalBtn">START NEXT PHASE</button>
         </div>
     </div>
 
     <script>
-        // DOM Elements
+        // === DOM Elements ===
         const taskInput = document.getElementById('taskInput');
+        const taskPomsInput = document.getElementById('taskPoms');
         const addTaskBtn = document.getElementById('addTaskBtn');
         const taskList = document.getElementById('taskList');
+        const taskEmptyState = document.getElementById('taskEmptyState');
         const downloadLogBtn = document.getElementById('downloadLogBtn');
+        const downloadWeeklyLogBtn = document.getElementById('downloadWeeklyLogBtn');
+        
+        // Single Day History
         const historyDateInput = document.getElementById('historyDate');
         const viewHistoryBtn = document.getElementById('viewHistoryBtn');
         const historyDisplay = document.getElementById('historyDisplay');
+        
+        // Historical Stats
+        const historyStartDateInput = document.getElementById('historyStartDate');
+        const historyEndDateInput = document.getElementById('historyEndDate');
+        const historyStatsMessage = document.getElementById('historyStatsMessage');
+        
+        // NEW: AI Insights
+        const getInsightsBtn = document.getElementById('getInsightsBtn');
+        const aiInsightsDisplay = document.getElementById('aiInsightsDisplay');
+        const apiKey = "AIzaSyBT9IN5PiyqaWBdM9NekDg5d-5fWDuhZnE"; // Per instruction, leave empty.
+        
+        // NEW: Modal comment box
+        const sessionCommentInput = document.getElementById('sessionComment');
 
-        // Settings
+        // === Settings ===
         let focusDuration = 25; // minutes
         let breakDuration = 5; // minutes
         let sessionsPerCycle = 2;
 
-        // State
+        // === State ===
         let currentMode = 'focus'; // 'focus' or 'break'
         let currentSession = 1;
         let timeRemaining = focusDuration * 60; // seconds
@@ -700,15 +971,23 @@
         let notificationInterval = null;
         let wakeLock = null;
         
-        // NEW: Task and Stats State
-        let tasks = []; // Holds the list of pending tasks
-        let completedToday = []; // Holds tasks completed today
+        // Task State
+        let tasks = []; // { id: string, text: string, totalPoms: number, completedPoms: number, comments: [] }
+        let completedToday = []; // Same object structure
 
         // Stats
         let completedSessions = 0;
         let totalFocusMinutes = 0;
+        
+        // History Date Range State
+        let historyStartDate;
+        let historyEndDate;
+        
+        // Chart instances
+        let taskChartInstance = null;
+        let historyTaskChartInstance = null; 
 
-        // Audio context for sounds
+        // === Audio ===
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
         function playSound(frequency, duration) {
@@ -729,7 +1008,6 @@
             }
         }
 
-        // --- Sound Functions ---
         function playFocusStartSound() { playSound(523.25, 0.15); setTimeout(() => playSound(659.25, 0.15), 150); setTimeout(() => playSound(783.99, 0.2), 300); setTimeout(() => playSound(1046.50, 0.25), 450); }
         function playFocusEndSound() { playSound(1046.50, 0.1); setTimeout(() => playSound(1174.66, 0.1), 100); setTimeout(() => playSound(1318.51, 0.1), 200); setTimeout(() => playSound(1567.98, 0.2), 300); setTimeout(() => playSound(1567.98, 0.1), 500); setTimeout(() => playSound(1318.51, 0.3), 600); }
         function playBreakStartSound() { playSound(880, 0.2); setTimeout(() => playSound(783.99, 0.2), 200); setTimeout(() => playSound(659.25, 0.2), 400); setTimeout(() => playSound(523.25, 0.3), 600); }
@@ -758,7 +1036,6 @@
         // --- Timer Controls ---
         function start() { 
             if (isRunning) return;
-            // Resume audio context if it was suspended
             if (audioContext.state === 'suspended') {
                 audioContext.resume();
             }
@@ -805,35 +1082,39 @@
             updateDisplay(); 
         }
 
+        // UPDATED: completePhase logic
         function completePhase() {
             stop();
             notificationInterval = setInterval(playAlertLoop, 3000);
             playAlertLoop();
             
             if (currentMode === 'focus') {
+                // Focus session ended
                 playFocusEndSound();
                 completedSessions++;
                 totalFocusMinutes += focusDuration;
-                updateStats();
                 
-                // NEW: Auto-complete the top task
-                if (tasks.length > 0) {
-                    const completedTask = tasks.shift(); // Remove the first task
-                    completedToday.push(completedTask); // Add it to today's completed list
-                    renderTasks(); // Re-render the task list
-                    saveStateToLocal(); // Save the new state
-                }
-
+                // Note: Task completion logic is now moved to showPhaseCompleteModal's button handler
+                
                 if (currentSession >= sessionsPerCycle) {
-                    showPhaseCompleteModal('🎉 Full Cycle Complete!', 'Congratulations! You completed a full study cycle.\nTake a well-deserved break!', 'break');
+                    showPhaseCompleteModal('🎉 Full Cycle Complete!', 'Congratulations! You completed a full study cycle.\nTake a well-deserved break!', 'break', true); // Show comment box
                     currentSession = 1;
                 } else {
                     currentSession++;
-                    showPhaseCompleteModal('⏰ Focus Complete!', 'Great work! Time for a break.', 'break');
+                    showPhaseCompleteModal('⏰ Focus Complete!', 'Great work! Time for a break.', 'break', true); // Show comment box
                 }
             } else {
+                // Break ended
                 playBreakEndSound();
-                showPhaseCompleteModal('⏰ Break Over!', 'Ready for the next focus session?', 'focus');
+                
+                let nextTaskMessage = 'Ready for the next focus session?';
+                if (tasks.length > 0) {
+                    nextTaskMessage = `Next task: <br><strong>${tasks[0].text}</strong>`; 
+                } else {
+                    nextTaskMessage = 'Add a new task to get started!';
+                }
+                
+                showPhaseCompleteModal('⏰ Break Over!', nextTaskMessage, 'focus', false); // Hide comment box
             }
         }
 
@@ -860,9 +1141,77 @@
             document.getElementById('completedSessions').textContent = completedSessions;
         }
 
-        function updateStats() {
+        // --- Stats Functions ---
+        
+        function updateTodayStats() {
+            // Update basic stats
             document.getElementById('totalFocusTime').textContent = `${totalFocusMinutes}m`;
             document.getElementById('totalSessions').textContent = completedSessions;
+
+            // Calculate new stats
+            const totalCompletedTasks = completedToday.length;
+            const totalIncompleteTasks = tasks.length;
+            const totalTasks = totalCompletedTasks + totalIncompleteTasks;
+            const completionPercentage = totalTasks === 0 ? 0 : Math.round((totalCompletedTasks / totalTasks) * 100);
+            
+            const allTasks = [...completedToday, ...tasks];
+            const pomsDone = allTasks.reduce((acc, task) => acc + (task.completedPoms || 0), 0);
+            const pomsEst = allTasks.reduce((acc, task) => acc + (task.totalPoms || 0), 0);
+
+            // Update DOM
+            document.getElementById('statTotalTasks').textContent = totalTasks;
+            document.getElementById('statCompletion').textContent = `${completionPercentage}%`;
+            document.getElementById('statPomsDone').textContent = pomsDone;
+            document.getElementById('statPomsEst').textContent = pomsEst;
+
+            // Update Chart
+            updateTodayChart(totalCompletedTasks, totalIncompleteTasks);
+        }
+        
+        function updateTodayChart(completedCount, incompleteCount) {
+             try {
+                if (taskChartInstance) {
+                    taskChartInstance.destroy(); // Destroy old chart
+                }
+                
+                const ctx = document.getElementById('taskChart').getContext('2d');
+                taskChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Completed', 'Incomplete'],
+                        datasets: [{
+                            data: [completedCount, incompleteCount],
+                            backgroundColor: [
+                                'rgba(86, 171, 47, 0.8)',  // Green
+                                'rgba(245, 87, 108, 0.8)' // Red
+                            ],
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: 'white',
+                                    padding: 20,
+                                    font: { size: 14 }
+                                }
+                            },
+                            tooltip: {
+                                titleFont: { size: 14 },
+                                bodyFont: { size: 12 },
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Error creating today's chart: ", e);
+            }
         }
 
         // --- Settings Panel ---
@@ -875,7 +1224,6 @@
             const newBreak = parseInt(document.getElementById('breakTime').value);
             const newSessions = parseInt(document.getElementById('sessionsPerCycle').value);
             if (newFocus < 1 || newBreak < 1 || newSessions < 1) { 
-                // Using a custom modal/alert here would be better, but window.alert is fine for settings.
                 alert('Please enter valid values (minimum 1)'); 
                 return; 
             }
@@ -883,26 +1231,70 @@
             breakDuration = newBreak;
             sessionsPerCycle = newSessions;
             
-            saveStateToLocal(); // <-- ADDED: Save settings when "Save" is clicked
-
+            saveStateToLocal(); 
             reset();
             toggleSettings();
             playSound(800, 0.2);
-            // alert('✅ Settings saved successfully!');
         }
 
         function pad(number) { return number < 10 ? '0' + number : number; }
 
         // --- Completion Modal ---
-        function showPhaseCompleteModal(title, message, nextMode) {
+        // NEW: Function to handle task completion and comment saving
+        function handleTaskCompletion(comment) {
+            if (tasks.length === 0) return; // No active task
+            
+            let currentTask = tasks[0];
+            currentTask.completedPoms++; // Increment pom count
+            
+            // Initialize comments array if it doesn't exist
+            if (!currentTask.comments) {
+                currentTask.comments = [];
+            }
+            
+            // Add comment if it's not empty
+            if (comment && comment.length > 0) {
+                currentTask.comments.push(comment);
+            }
+
+            // Check if task is finished
+            if (currentTask.completedPoms >= currentTask.totalPoms) {
+                const completedTask = tasks.shift(); // Remove from incomplete
+                completedToday.push(completedTask); // Add to completed
+            }
+            
+            renderTasks(); // Re-render to show updated count or move task
+            saveStateToLocal(); // Save the new state
+            updateTodayStats(); // Update stats
+        }
+        
+        // UPDATED: showPhaseCompleteModal to handle comment box
+        function showPhaseCompleteModal(title, message, nextMode, showCommentBox = false) {
             const modal = document.getElementById('modalOverlay');
             modal.querySelector('#modalTitle').textContent = title;
-            modal.querySelector('#modalMessage').textContent = message;
+            modal.querySelector('#modalMessage').innerHTML = message;
             modal.querySelector('#modalIcon').textContent = nextMode === 'focus' ? '🎯' : '☕';
+            
+            // NEW: Show/hide comment box
+            if (showCommentBox) {
+                sessionCommentInput.style.display = 'block';
+                sessionCommentInput.value = ''; // Clear old comment
+            } else {
+                sessionCommentInput.style.display = 'none';
+            }
+            
             modal.classList.add('show');
             
             modal.querySelector('#modalBtn').onclick = function() {
                 clearInterval(notificationInterval);
+                
+                // NEW: Get comment and handle task completion
+                const comment = sessionCommentInput.value.trim();
+                if (showCommentBox) {
+                    handleTaskCompletion(comment);
+                }
+                
+                // Resume original logic
                 currentMode = nextMode;
                 timeRemaining = (nextMode === 'focus' ? focusDuration : breakDuration) * 60;
                 totalTime = timeRemaining;
@@ -914,83 +1306,114 @@
             };
         }
         
-        // NEW: ----- Task Management and Data Persistence Functions -----
+        // === Task Management and Data Persistence ===
 
-        function getTodayDateString() {
-            const today = new Date();
-            // Format to YYYY-MM-DD to match the date input value
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
+        function getTodayDateString(date = new Date()) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
 
         function renderTasks() {
-            taskList.innerHTML = ''; // Clear existing list
+            if (tasks.length === 0 && completedToday.length === 0) {
+                taskList.style.display = 'none';
+                taskEmptyState.style.display = 'block';
+            } else {
+                taskList.style.display = 'block';
+                taskEmptyState.style.display = 'none';
+            }
+
+            taskList.innerHTML = ''; 
             
-            // Render incomplete tasks
-            tasks.forEach((taskText, index) => {
+            tasks.forEach((task) => {
                 const li = document.createElement('li');
-                li.className = 'task-item'; // No 'completed' class
+                li.className = 'task-item';
                 li.setAttribute('draggable', 'true');
-                li.dataset.index = index;
+                li.dataset.id = task.id; 
 
                 li.innerHTML = `
                     <span class="task-handle">☰</span>
-                    <span class="task-item-text">${taskText}</span>
-                    <button class="delete-task-btn" data-index="${index}">&times;</button>
+                    <div class="task-item-details">
+                        <span class="task-item-text">${task.text}</span>
+                        <span class="task-pom-count">${task.completedPoms} / ${task.totalPoms}</span>
+                    </div>
+                    <button class="delete-task-btn" data-id="${task.id}">&times;</button>
                 `;
                 taskList.appendChild(li);
             });
 
-            // NEW: Render completed tasks
-            completedToday.forEach((taskText) => {
+            completedToday.forEach((task) => {
                 const li = document.createElement('li');
-                li.className = 'task-item completed'; // Add 'completed' class
-                li.setAttribute('draggable', 'false'); // Not draggable
+                li.className = 'task-item completed';
+                li.setAttribute('draggable', 'false');
 
                 li.innerHTML = `
                     <span class="task-handle">✅</span>
-                    <span class="task-item-text">${taskText}</span>
+                    <div class="task-item-details">
+                        <span class="task-item-text">${task.text}</span>
+                        <span class="task-pom-count">${task.completedPoms} / ${task.totalPoms}</span>
+                    </div>
                     <button class="delete-task-btn" style="display: none;">&times;</button>
                 `;
                 taskList.appendChild(li);
             });
         }
         
+        // UPDATED: addTask to include comments array
         function addTask() {
             const taskText = taskInput.value.trim();
+            const poms = parseInt(taskPomsInput.value) || 1; 
+            
             if (taskText) {
-                tasks.push(taskText);
+                const newTask = {
+                    id: Date.now().toString(),
+                    text: taskText,
+                    totalPoms: poms,
+                    completedPoms: 0,
+                    comments: [] // NEW: Initialize comments array
+                };
+                tasks.push(newTask);
                 taskInput.value = '';
+                taskPomsInput.value = ''; 
                 renderTasks();
                 saveStateToLocal();
+                updateTodayStats(); 
             }
         }
         
-        function deleteTask(index) {
-            tasks.splice(index, 1);
+        function deleteTask(taskId) {
+            tasks = tasks.filter(task => task.id !== taskId);
             renderTasks();
             saveStateToLocal();
+            updateTodayStats(); 
         }
 
-        function saveStateToLocal() {
+        function saveStateToLocal(dateStr = getTodayDateString()) {
             try {
-                const todayStr = getTodayDateString();
+                // Save today's log
                 const dailyLog = {
                     completed: completedToday,
                     incomplete: tasks,
                     stats: { completedSessions, totalFocusMinutes }
                 };
+                localStorage.setItem(`pomodoro-log-${dateStr}`, JSON.stringify(dailyLog));
                 
-                // Save the log for today's date for history purposes
-                localStorage.setItem(`pomodoro-log-${todayStr}`, JSON.stringify(dailyLog));
-                // Save the current pending tasks to a separate key so we can load it next time
+                // Save current pending tasks
                 localStorage.setItem('pomodoro-pending-tasks', JSON.stringify(tasks));
-
-                // NEW: Save timer settings
+                
+                // Save settings
                 const settings = { focusDuration, breakDuration, sessionsPerCycle };
                 localStorage.setItem('pomodoro-settings', JSON.stringify(settings));
+                
+                // Save last visited date
+                localStorage.setItem('pomodoro-last-visited', dateStr);
+
+                // NEW: Save history date range
+                if (historyStartDate && historyEndDate) {
+                    localStorage.setItem('pomodoro-history-start', historyStartDate);
+                    localStorage.setItem('pomodoro-history-end', historyEndDate);
+                }
 
             } catch (e) {
                 console.error("Failed to save to localStorage: ", e);
@@ -999,27 +1422,63 @@
 
         function loadStateFromLocal() {
             try {
-                // NEW: Load settings
+                const todayStr = getTodayDateString();
+                const lastVisitedStr = localStorage.getItem('pomodoro-last-visited') || todayStr;
+
+                // Load Settings
                 const settings = JSON.parse(localStorage.getItem('pomodoro-settings') || '{}');
                 if (settings.focusDuration) {
                     focusDuration = settings.focusDuration;
                     breakDuration = settings.breakDuration;
                     sessionsPerCycle = settings.sessionsPerCycle;
-
-                    // NEW: Update the input fields to show the loaded settings
                     document.getElementById('focusTime').value = focusDuration;
                     document.getElementById('breakTime').value = breakDuration;
                     document.getElementById('sessionsPerCycle').value = sessionsPerCycle;
                 }
 
-                const todayStr = getTodayDateString();
+                // Handle Day Change
                 const pendingTasks = JSON.parse(localStorage.getItem('pomodoro-pending-tasks') || '[]');
-                const todaysLog = JSON.parse(localStorage.getItem(`pomodoro-log-${todayStr}`) || '{}');
+                if (todayStr !== lastVisitedStr) {
+                    console.log(`New day detected. Archiving tasks from ${lastVisitedStr}`);
+                    const yesterdaysLog = JSON.parse(localStorage.getItem(`pomodoro-log-${lastVisitedStr}`) || '{}');
+                    const archiveLog = {
+                        completed: yesterdaysLog.completed || [],
+                        incomplete: pendingTasks, 
+                        stats: yesterdaysLog.stats || { completedSessions: 0, totalFocusMinutes: 0 }
+                    };
+                    localStorage.setItem(`pomodoro-log-${lastVisitedStr}`, JSON.stringify(archiveLog));
+                    
+                    tasks = [];
+                    completedToday = [];
+                    completedSessions = 0;
+                    totalFocusMinutes = 0;
+                    saveStateToLocal(todayStr);
 
-                tasks = pendingTasks;
-                completedToday = todaysLog.completed || [];
-                completedSessions = todaysLog.stats?.completedSessions || 0;
-                totalFocusMinutes = todaysLog.stats?.totalFocusMinutes || 0;
+                } else {
+                    // Same Day
+                    const todaysLog = JSON.parse(localStorage.getItem(`pomodoro-log-${todayStr}`) || '{}');
+                    tasks = pendingTasks; 
+                    completedToday = todaysLog.completed || []; 
+                    completedSessions = todaysLog.stats?.completedSessions || 0;
+                    totalFocusMinutes = todaysLog.stats?.totalFocusMinutes || 0;
+                }
+                
+                // Load History Date Range
+                const savedStartDate = localStorage.getItem('pomodoro-history-start');
+                const savedEndDate = localStorage.getItem('pomodoro-history-end');
+
+                if (savedStartDate && savedEndDate) {
+                    historyStartDate = savedStartDate;
+                    historyEndDate = savedEndDate;
+                } else {
+                    // Default to last 7 days
+                    historyEndDate = todayStr;
+                    historyStartDate = getTodayDateString(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+                }
+                historyStartDateInput.value = historyStartDate;
+                historyEndDateInput.value = historyEndDate;
+
+
             } catch (e) {
                 console.error("Failed to load from localStorage: ", e);
                 tasks = [];
@@ -1027,24 +1486,37 @@
             }
 
             renderTasks();
-            updateStats();
+            updateTodayStats(); 
             updateSessionDisplay();
         }
+        
+        // --- History & Log Functions ---
 
+        // UPDATED: generateAndDownloadLog to include comments
         function generateAndDownloadLog() {
             const todayStr = getTodayDateString();
             let logContent = `Pomodoro Log for: ${todayStr}\n\n`;
             
             logContent += "✅ Completed Tasks:\n";
             if (completedToday.length > 0) {
-                completedToday.forEach(task => logContent += `- ${task}\n`);
+                completedToday.forEach(task => {
+                    logContent += `- ${task.text} (${task.completedPoms}/${task.totalPoms} Poms)\n`;
+                    if (task.comments && task.comments.length > 0) {
+                        task.comments.forEach(c => logContent += `      - Comment: ${c}\n`);
+                    }
+                });
             } else {
                 logContent += "- None\n";
             }
             
             logContent += "\n📝 Incomplete Tasks (Pending):\n";
             if (tasks.length > 0) {
-                tasks.forEach(task => logContent += `- ${task}\n`);
+                tasks.forEach(task => {
+                    logContent += `- ${task.text} (${task.completedPoms}/${task.totalPoms} Poms)\n`;
+                    if (task.comments && task.comments.length > 0) {
+                        task.comments.forEach(c => logContent += `      - Comment: ${c}\n`);
+                    }
+                });
             } else {
                 logContent += "- None\n";
             }
@@ -1064,6 +1536,73 @@
             URL.revokeObjectURL(url);
         }
 
+        // UPDATED: generateAndDownloadWeeklyLog to include comments
+        function generateAndDownloadWeeklyLog() {
+            let logContent = `Weekly Pomodoro Summary\n`;
+            logContent += `Week of: ${getTodayDateString(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000))} to ${getTodayDateString()}\n`;
+            logContent += "========================================\n\n";
+
+            let totalPoms = 0;
+            let totalFocus = 0;
+
+            for (let i = 6; i >= 0; i--) { 
+                const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+                const dateStr = getTodayDateString(date);
+                const logData = JSON.parse(localStorage.getItem(`pomodoro-log-${dateStr}`) || 'null');
+                
+                logContent += `--- ${dateStr} ---\n`;
+                if (logData) {
+                    logContent += "  ✅ Completed:\n";
+                    if (logData.completed && logData.completed.length > 0) {
+                        logData.completed.forEach(task => {
+                            logContent += `    - ${task.text} (${task.completedPoms}/${task.totalPoms} Poms)\n`;
+                            if (task.comments && task.comments.length > 0) {
+                                task.comments.forEach(c => logContent += `        - Comment: ${c}\n`);
+                            }
+                        });
+                    } else {
+                        logContent += "    - None\n";
+                    }
+                    
+                    logContent += "  📝 Incomplete:\n";
+                     if (logData.incomplete && logData.incomplete.length > 0) {
+                        logData.incomplete.forEach(task => {
+                            logContent += `    - ${task.text} (${task.completedPoms}/${task.totalPoms} Poms)\n`;
+                            if (task.comments && task.comments.length > 0) {
+                                task.comments.forEach(c => logContent += `        - Comment: ${c}\n`);
+                            }
+                        });
+                    } else {
+                        logContent += "    - None\n";
+                    }
+                    if (logData.stats) {
+                        logContent += `\n  📊 Daily Stats: ${logData.stats.completedSessions} sessions, ${logData.stats.totalFocusMinutes} min focus\n`;
+                        totalPoms += logData.stats.completedSessions;
+                        totalFocus += logData.stats.totalFocusMinutes;
+                    }
+
+                } else {
+                    logContent += "  (No data logged)\n";
+                }
+                logContent += "\n";
+            }
+
+            logContent += "========================================\n";
+            logContent += `Weekly Total Sessions: ${totalPoms}\n`;
+            logContent += `Weekly Total Focus Time: ${totalFocus} minutes\n`;
+
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pomodoro-weekly-summary-${getTodayDateString()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // UPDATED: viewHistory to show comments
         function viewHistory() {
             const dateStr = historyDateInput.value;
             if (!dateStr) {
@@ -1080,7 +1619,6 @@
                 return;
             }
 
-
             if (!logData) {
                 historyDisplay.innerHTML = `<p>No data found for ${dateStr}.</p>`;
                 return;
@@ -1088,19 +1626,35 @@
             
             let historyHTML = `<h4>Log for ${dateStr}</h4>`;
             
-            historyHTML += `<h5>✅ Completed Tasks: (${logData.completed.length})</h5>`;
-            if (logData.completed.length > 0) {
+            historyHTML += `<h5>✅ Completed Tasks: (${logData.completed ? logData.completed.length : 0})</h5>`;
+            if (logData.completed && logData.completed.length > 0) {
                 historyHTML += '<ul>';
-                logData.completed.forEach(task => historyHTML += `<li>${task}</li>`);
+                logData.completed.forEach(task => {
+                    historyHTML += `<li>${task.text} (${task.completedPoms}/${task.totalPoms})`;
+                    if (task.comments && task.comments.length > 0) {
+                        historyHTML += `<ul class="comment-list">`;
+                        task.comments.forEach(c => historyHTML += `<li>${c}</li>`);
+                        historyHTML += `</ul>`;
+                    }
+                    historyHTML += `</li>`;
+                });
                 historyHTML += '</ul>';
             } else {
                 historyHTML += `<p>No tasks were completed.</p>`;
             }
 
-            historyHTML += `<h5 style="margin-top: 15px;">📝 Incomplete Tasks: (${logData.incomplete.length})</h5>`;
-            if (logData.incomplete.length > 0) {
+            historyHTML += `<h5 style="margin-top: 15px;">📝 Incomplete Tasks: (${logData.incomplete ? logData.incomplete.length : 0})</h5>`;
+            if (logData.incomplete && logData.incomplete.length > 0) {
                 historyHTML += '<ul>';
-                logData.incomplete.forEach(task => historyHTML += `<li>${task}</li>`);
+                logData.incomplete.forEach(task => {
+                    historyHTML += `<li>${task.text} (${task.completedPoms}/${task.totalPoms})`;
+                     if (task.comments && task.comments.length > 0) {
+                        historyHTML += `<ul class="comment-list">`;
+                        task.comments.forEach(c => historyHTML += `<li>${c}</li>`);
+                        historyHTML += `</ul>`;
+                    }
+                    historyHTML += `</li>`;
+                });
                 historyHTML += '</ul>';
             } else {
                  historyHTML += `<p>No tasks were left incomplete.</p>`;
@@ -1109,6 +1663,263 @@
             historyDisplay.innerHTML = historyHTML;
         }
 
+        // NEW: Refactored data aggregation
+        function getAggregatedData(startDateStr, endDateStr) {
+            let aggFocus = 0;
+            let aggSessions = 0;
+            let aggCompletedTasks = [];
+            let aggIncompleteTasks = [];
+            
+            let currentDate = new Date(startDateStr);
+            // Fix: Ensure correct date looping
+            currentDate.setHours(0, 0, 0, 0); 
+            const endDate = new Date(endDateStr);
+            endDate.setHours(0, 0, 0, 0);
+
+            let dayCount = 0;
+
+            while (currentDate <= endDate) {
+                const dateStr = getTodayDateString(currentDate);
+                const logData = JSON.parse(localStorage.getItem(`pomodoro-log-${dateStr}`) || 'null');
+                
+                if (logData) {
+                    aggFocus += logData.stats?.totalFocusMinutes || 0;
+                    aggSessions += logData.stats?.completedSessions || 0;
+                    aggCompletedTasks.push(...(logData.completed || []));
+                    
+                    if (dateStr === getTodayDateString(endDate)) {
+                         aggIncompleteTasks = logData.incomplete || [];
+                    } else if (getTodayDateString() === dateStr) {
+                         aggIncompleteTasks = tasks || []; 
+                    }
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+                dayCount++;
+                if (dayCount > 365) break; 
+            }
+            
+            return { aggFocus, aggSessions, aggCompletedTasks, aggIncompleteTasks };
+        }
+
+        // UPDATED: generateHistoricalStats to use new helper
+        function generateHistoricalStats() {
+            const startDateStr = historyStartDateInput.value;
+            const endDateStr = historyEndDateInput.value;
+            
+            if (!startDateStr || !endDateStr) {
+                historyStatsMessage.textContent = "Please select a start and end date.";
+                return;
+            }
+            
+            historyStartDate = startDateStr;
+            historyEndDate = endDateStr;
+            saveStateToLocal();
+            
+            const { aggFocus, aggSessions, aggCompletedTasks, aggIncompleteTasks } = getAggregatedData(startDateStr, endDateStr);
+
+            // Calculate stats
+            const totalCompleted = aggCompletedTasks.length;
+            const totalIncomplete = aggIncompleteTasks.length; 
+            const totalTasks = totalCompleted + totalIncomplete;
+            const completionPerc = totalTasks === 0 ? 0 : Math.round((totalCompleted / totalTasks) * 100);
+
+            const allAggTasks = [...aggCompletedTasks, ...aggIncompleteTasks];
+            const pomsDone = allAggTasks.reduce((acc, task) => acc + (task.completedPoms || 0), 0);
+            const pomsEst = allAggTasks.reduce((acc, task) => acc + (task.totalPoms || 0), 0);
+
+            // Update DOM
+            if (totalTasks === 0 && aggSessions === 0) {
+                 historyStatsMessage.textContent = `No data found from ${startDateStr} to ${endDateStr}.`;
+            } else {
+                 historyStatsMessage.textContent = `Showing stats from ${startDateStr} to ${endDateStr}.`;
+            }
+            
+            document.getElementById('histStatFocusTime').textContent = `${aggFocus}m`;
+            document.getElementById('histStatSessions').textContent = aggSessions;
+            document.getElementById('histStatCompletion').textContent = `${completionPerc}%`;
+            document.getElementById('histStatTotalTasks').textContent = totalTasks;
+            document.getElementById('histStatPomsDone').textContent = pomsDone;
+            document.getElementById('histStatPomsEst').textContent = pomsEst;
+
+            // Update Chart
+            updateHistoryChart(totalCompleted, totalIncomplete);
+        }
+
+        function updateHistoryChart(completedCount, incompleteCount) {
+            try {
+                if (historyTaskChartInstance) {
+                    historyTaskChartInstance.destroy(); // Destroy old chart
+                }
+                
+                const ctx = document.getElementById('historyTaskChart').getContext('2d');
+                historyTaskChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Completed', 'Incomplete'],
+                        datasets: [{
+                            data: [completedCount, incompleteCount],
+                            backgroundColor: [
+                                'rgba(86, 171, 47, 0.8)',  // Green
+                                'rgba(245, 87, 108, 0.8)' // Red
+                            ],
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: 'white',
+                                    padding: 20,
+                                    font: { size: 14 }
+                                }
+                            },
+                            tooltip: {
+                                titleFont: { size: 14 },
+                                bodyFont: { size: 12 },
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Error creating history chart: ", e);
+            }
+        }
+        
+        // --- NEW: AI Insight Functions ---
+        
+        /**
+         * Fetches data from a URL with exponential backoff.
+         */
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.warn(`Attempt ${i + 1} failed. Retrying in ${delay}ms...`);
+                    if (i === retries - 1) throw error; // Last attempt, throw
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2; // Exponential backoff
+                }
+            }
+        }
+
+        /**
+         * Parses a simple version of Markdown into HTML.
+         */
+        function parseSimpleMarkdown(text) {
+            let html = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>');     // Italic
+            
+            // Handle lists
+            html = html.split('\n').map(line => {
+                if (line.startsWith('* ')) {
+                    return `<li>${line.substring(2)}</li>`;
+                }
+                return line;
+            }).join('\n');
+
+            html = html.replace(/<\/li>\n<li>/g, '</li><li>');   // Join adjacent list items
+            html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>'); // Wrap consecutive li in ul
+            
+            // Convert newlines to <br>, but not inside <ul>
+            html = html.split('\n').map(part => {
+                if (part.startsWith('<ul>') || part.startsWith('<li>')) return part;
+                return part.replace(/\n/g, '<br>');
+            }).join('\n');
+            
+            // Clean up
+            html = html.replace(/<br><ul>/g, '<ul>');
+            html = html.replace(/<\/ul><br>/g, '</ul>');
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+
+        /**
+         * Fetches AI insights from Gemini.
+         */
+        async function getAIInsights() {
+            aiInsightsDisplay.innerHTML = '<div class="spinner"></div>';
+            getInsightsBtn.disabled = true;
+
+            try {
+                // 1. Get data from the selected date range
+                const { aggCompletedTasks, aggIncompleteTasks } = getAggregatedData(
+                    historyStartDateInput.value,
+                    historyEndDateInput.value
+                );
+                
+                const allTasks = [...aggCompletedTasks, ...aggIncompleteTasks];
+                if (allTasks.length === 0) {
+                    aiInsightsDisplay.innerHTML = "Not enough data to analyze. Please select a range with logged tasks.";
+                    getInsightsBtn.disabled = false;
+                    return;
+                }
+                
+                // 2. Format the data for the AI
+                // NEW: Extract comments
+                const allComments = allTasks.flatMap(task => task.comments || []).filter(c => c);
+
+                const dataSummary = {
+                    completedTasks: aggCompletedTasks.map(task => task.text),
+                    incompleteTasks: aggIncompleteTasks.map(task => task.text),
+                    sessionComments: allComments, // NEW
+                    totalPomodorosCompleted: allTasks.reduce((acc, task) => acc + (task.completedPoms || 0), 0),
+                    totalPomodorosEstimated: allTasks.reduce((acc, task) => acc + (task.totalPoms || 0), 0),
+                    totalFocusSessions: allTasks.reduce((acc, task) => acc + (task.completedPoms || 0), 0)
+                };
+
+                // 3. Define Prompts
+                const systemPrompt = "You are a friendly, encouraging, and sharp-eyed study coach. Your goal is to analyze a student's task list and session comments from their Pomodoro timer app, identify their main topics of study, and provide actionable insights. Use Google Search to understand *what* the topics are (e.g., 'Andrej Karpathy AI course' is a deep learning topic). Keep your response concise, friendly, and formatted in basic Markdown (use **bold**, *italics*, and `*` for lists). Do not use headers.";
+
+                // NEW: Updated userQuery
+                const userQuery = `Here is my study data for the period: ${JSON.stringify(dataSummary)}. 
+                
+Please analyze my focus areas (like 'Andrej Karpathy AI course' which you should identify as an AI topic), note my most common topics, and give me one or two actionable insights or suggestions based on my task list AND my session comments. The comments show what I learned or struggled with.`;
+                
+                // 4. Construct API Payload
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ "parts": [{ "text": userQuery }] }],
+                    systemInstruction: { "parts": [{ "text": systemPrompt }] },
+                    tools: [{ "google_search": {} }] // Use Google Search
+                };
+
+                // 5. Fetch with retry
+                const result = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                // 6. Display result
+                const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (aiText) {
+                    aiInsightsDisplay.innerHTML = parseSimpleMarkdown(aiText);
+                } else {
+                    throw new Error("No content in AI response.");
+                }
+
+            } catch (error) {
+                console.error("Error getting AI insights: ", error);
+                aiInsightsDisplay.innerHTML = "Sorry, I couldn't get insights right now. Please check the console and try again.";
+            } finally {
+                getInsightsBtn.disabled = false;
+            }
+        }
+
+
         // --- Event Listeners ---
         document.getElementById('startBtn').addEventListener('click', start);
         document.getElementById('stopBtn').addEventListener('click', stop);
@@ -1116,25 +1927,33 @@
         document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
         document.getElementById('saveBtn').addEventListener('click', saveSettings);
         
-        // NEW: Task and History Event Listeners
+        // Task Listeners
         addTaskBtn.addEventListener('click', addTask);
-        taskInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') addTask();
-        });
+        taskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+        taskPomsInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
         
         taskList.addEventListener('click', (e) => {
             if (e.target.classList.contains('delete-task-btn')) {
-                const index = parseInt(e.target.dataset.index);
-                deleteTask(index);
+                const taskId = e.target.dataset.id; 
+                deleteTask(taskId);
             }
         });
         
+        // History Listeners
         downloadLogBtn.addEventListener('click', generateAndDownloadLog);
+        downloadWeeklyLogBtn.addEventListener('click', generateAndDownloadWeeklyLog);
         viewHistoryBtn.addEventListener('click', viewHistory);
+        
+        // Historical Stats Listeners
+        historyStartDateInput.addEventListener('change', generateHistoricalStats);
+        historyEndDateInput.addEventListener('change', generateHistoricalStats);
+        
+        // NEW: AI Insight Listener
+        getInsightsBtn.addEventListener('click', getAIInsights);
 
         // --- Keyboard shortcuts ---
         document.addEventListener('keydown', (e) => {
-            if (document.activeElement === taskInput) return; // Don't trigger shortcuts if typing a task
+            if (document.activeElement === taskInput || document.activeElement === taskPomsInput || document.activeElement === sessionCommentInput) return; 
             if (e.code === 'Space') { e.preventDefault(); isRunning ? stop() : start(); } 
             else if (e.code === 'KeyR') { reset(); } 
             else if (e.code === 'KeyS') { toggleSettings(); }
@@ -1142,37 +1961,26 @@
 
         // Handle tab visibility change
         document.addEventListener('visibilitychange', () => { if (!document.hidden && isRunning) requestWakeLock(); });
-        
-        // Try to prevent timer throttling when tab is in background (not foolproof)
         let keepAliveInterval = setInterval(() => { if (isRunning) document.title = document.title; }, 1000);
         
-        // NEW: Drag and Drop for tasks
-        let dragStartIndex;
+        // --- Drag and Drop ---
+        let dragStartId;
         
         function dragStart(e) {
-            // UPDATED: Allow dragging from anywhere on the task item, not just the handle
             const taskItem = e.target.closest('.task-item');
-
-            // Check if we are on a valid, incomplete task item
             if (taskItem && !taskItem.classList.contains('completed')) {
-                // Check if the user is trying to delete the task. If so, don't drag.
                 if (e.target.classList.contains('delete-task-btn')) {
-                    e.preventDefault(); // Prevent dragging when clicking delete
-                    return;
+                    e.preventDefault(); return;
                 }
-                
-                dragStartIndex = +taskItem.dataset.index;
-                taskItem.classList.add('dragging'); // Add class to the <li>
+                dragStartId = taskItem.dataset.id; 
+                taskItem.classList.add('dragging'); 
             } else {
-                // If it's a completed item or not a task item, prevent drag
                 e.preventDefault();
             }
         }
         
         function getDragAfterElement(container, y) {
-            // Only consider incomplete tasks for re-ordering
             const draggableElements = [...container.querySelectorAll('.task-item:not(.completed):not(.dragging)')];
-
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
@@ -1184,25 +1992,20 @@
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
         
-        // NEW: Re-added the missing dragOver function
         function dragOver(e) {
-            e.preventDefault(); // Necessary to allow dropping
+            e.preventDefault(); 
             const draggingItem = document.querySelector('.dragging');
             if (!draggingItem) return;
 
             const afterElement = getDragAfterElement(taskList, e.clientY);
             if (afterElement == null) {
-                // We are at the end of the incomplete list
                 const firstCompleted = taskList.querySelector('.task-item.completed');
                 if (firstCompleted) {
-                    // Insert before the first completed task
                     taskList.insertBefore(draggingItem, firstCompleted);
                 } else {
-                    // No completed tasks, just append to the end
                     taskList.appendChild(draggingItem);
                 }
             } else {
-                // Insert before the next incomplete task
                 taskList.insertBefore(draggingItem, afterElement);
             }
         }
@@ -1212,19 +2015,16 @@
             if (draggingItem) {
                 draggingItem.classList.remove('dragging');
                 
-                // Re-order the tasks array based on the new DOM order of *incomplete* tasks
-                const newTasksOrder = [];
-                // Only select text from non-completed items
-                const taskItems = taskList.querySelectorAll('.task-item:not(.completed) .task-item-text');
-                taskItems.forEach(item => newTasksOrder.push(item.textContent));
-                tasks = newTasksOrder;
+                const newIdOrder = [...taskList.querySelectorAll('.task-item:not(.completed)')]
+                                    .map(li => li.dataset.id);
                 
-                renderTasks(); // Re-render to fix indices
+                tasks.sort((a, b) => newIdOrder.indexOf(a.id) - newIdOrder.indexOf(b.id));
+                
+                renderTasks(); 
                 saveStateToLocal();
             }
         }
         
-        // We add listeners to the list itself for event delegation
         taskList.addEventListener('dragstart', dragStart);
         taskList.addEventListener('dragover', dragOver);
         taskList.addEventListener('drop', drop);
@@ -1238,11 +2038,9 @@
 
         // --- Initialize App ---
         function init() {
-            // UPDATED: Load state first to get settings
-            loadStateFromLocal(); // This will load settings, data AND render tasks/stats
-            
-            // UPDATED: Reset *after* loading to apply the loaded settings to the timer
+            loadStateFromLocal(); 
             reset(); 
+            generateHistoricalStats(); // Load default history stats on startup
         }
 
         init();
